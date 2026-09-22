@@ -82,13 +82,19 @@ Example notebook: `example_papagei.ipynb`
 ## Preprocessing (PaPaGei's pipeline — match exactly)
 
 1. Bandpass: 4th-order **Chebyshev Type II** (`cheby2`, 20 dB stopband), 0.5–12 Hz, applied with `filtfilt` (zero-phase). Implemented in `pyPPG.preproc.Preprocess`, called via PaPaGei's `preprocess_one_ppg_signal`
-2. Segment: 8-second windows, 2-second shift (6-second overlap)
+2. Segment: **8-second windows**, 2-second shift (6-second overlap). This is PPG-DaLiA-specific, stated in the paper's dataset appendix (arXiv 2410.20542v2): "we use a 8s window with 6s and 2s overlap and shift". PaPaGei's *general* pipeline uses 10-second windows, which is where the 1,250-sample model input comes from. **The analysis window is 8 s; 1,250 is only the padded input length.**
 3. Reject: discard windows >25% flatline
 4. Normalise: z-score per window
-5. Resample: to 125 Hz
-6. Pad to expected input length
+5. Resample: to 125 Hz (an 8 s window becomes 1,000 samples)
+6. Pad to 1,250 samples, the 10 s pretraining length. The paper says only "resample and pad" for PPG-DaLiA. 1,250 and centre padding (half each side) are taken from their example notebook. Since the encoder averages over time, the pad length shifts the embedding, so treat this as an assumption to check if Arm A misses 11.53.
 
-**Order trap in pyPPG:** at sampling rates ≥75 Hz, `Preprocess` adds a 50 ms moving-average smoothing pass after the bandpass. Below 75 Hz it does not. PPG-DaLiA is 64 Hz, so filtering at the native rate skips the smoothing, while filtering after resampling to 125 Hz silently adds it. PaPaGei's example filters at native rate, then resamples. Confirm which order they used for PPG-DaLiA at Gate 2. Their example also z-scores *before* filtering, not after as step 4 implies; confirm that too.
+PaPaGei's public repo does **not** contain the PPG-DaLiA segmentation step. Its extraction script loads pre-made windows with `resample=False, normalize=False, fs=64`. Steps 1 to 6 are therefore ours to implement, calling their functions (`preprocess_one_ppg_signal`, biobss flatline detection, `resample_batch_signal`) in the order the paper gives.
+
+**Order, resolved from the paper:** filter → segment → flatline reject → z-score → resample → pad. Two consequences:
+- **Filter at the native 64 Hz, before resampling.** pyPPG's `Preprocess` adds a 50 ms moving-average smoothing pass only at ≥75 Hz. Filtering at 64 Hz skips it; filtering after resampling to 125 Hz would silently add it.
+- **Z-score per window, after flatline rejection.** Their example notebook z-scores the whole signal *before* filtering, but that notebook is for PPG-BP. Do not copy its order for PPG-DaLiA.
+
+**Cross-check at Gate 2:** PPG-DaLiA's own heart-rate labels are defined on 8 s windows with a 2 s shift, so the label count summed over subjects should be 64,697. Ten-second windows would give one fewer window per subject (64,682), so the exact count does distinguish the two.
 
 **Record the rejection rate per subject.** It varies, and it feeds the "usable minutes vs wear time" analysis.
 
@@ -108,7 +114,7 @@ This is the hardest part of the design. Get it wrong and every number is invalid
 
 - **Population set** — all windows from the other 14 subjects. Trains the downstream model for Arms A, B, B2.
 - **Adaptation block** — contiguous portion of the target's recording. Used by B, B2, C1, C2, D.
-- **Buffer** — ≥8 seconds, discarded entirely. Windows are 8s long, so this guarantees no window spans both blocks.
+- **Buffer** — ≥8 seconds (one window length), discarded entirely. Windows are 8s long, so this guarantees no window spans both blocks. It also covers the filter: `filtfilt` is zero-phase, so each filtered sample depends on raw signal either side of it. At 64 Hz, 99.9% of the filter's response lies within ±1.4 s and it falls below 0.1% of peak beyond ±3.8 s, well inside 8 s.
 - **Test block** — later contiguous portion. **Every arm evaluates here.**
 
 **Contiguous and temporally ordered**, for two reasons: random selection within a subject puts near-identical overlapping windows on both sides; and adapting on earlier data while testing on later data is the honest simulation of deployment.
@@ -177,7 +183,7 @@ Each gate must pass before moving on.
 ### Gate 1 — PaPaGei runs (target: this week)
 Clone, install, download weights, push random noise through the encoder, get 512 numbers out.
 ```python
-x = torch.randn(1, 1, 1250)   # one 10s window at 125 Hz
+x = torch.randn(1, 1, 1250)   # model input: an 8 s window at 125 Hz (1,000 samples) padded to 1,250
 with torch.no_grad():
     out = model(x)
 ```

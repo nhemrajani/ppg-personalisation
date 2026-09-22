@@ -140,11 +140,13 @@ unsolved.
 
 PaPaGei's published pipeline is followed exactly, since deviation without reason
 makes RQ1 unanswerable. A fourth-order Chebyshev Type II bandpass between 0.5 and
-12 Hz is
-applied with `filtfilt` to avoid phase distortion; the signal is segmented into
-eight-second windows with six seconds of overlap; windows more than 25 per cent
-flatline are discarded; each window is z-scored; and the result is resampled to
-125 Hz and padded to the encoder's expected input length.
+12 Hz is applied at the native 64 Hz with `filtfilt` to avoid phase distortion; the
+signal is segmented into eight-second windows with a two-second shift, as PaPaGei
+specifies for this dataset; windows more than 25 per cent flatline are discarded;
+each window is z-scored; and the result is resampled to 125 Hz, giving 1,000 samples,
+and padded to 1,250, the ten-second length on which the encoder was pretrained. The
+analysis window is therefore eight seconds, and the ten-second figure describes only
+the padded input.
 
 The rejection rate is recorded per subject, because it varies, and that variation
 matters for the budget sweep. Note also that per-window z-scoring already removes
@@ -166,7 +168,12 @@ model on which the population arms rely. The adaptation set is a contiguous port
 of the target subject's recording taken from the beginning, used only by the
 per-person arms. The test set is a later contiguous portion, used for evaluation by
 every arm. Between adaptation and test sits a buffer of at least eight seconds,
-discarded entirely, which guarantees that no eight-second window straddles both.
+discarded entirely, which guarantees that no eight-second window straddles both. The
+same buffer absorbs the reach of the bandpass filter, which is applied forwards and
+backwards over the continuous recording before segmentation, so that each filtered
+sample depends on raw signal on both sides of it. At 64 Hz, 99.9 per cent of the
+filter's response lies within 1.4 seconds of the sample, and it falls below 0.1 per
+cent of its peak beyond 3.8 seconds.
 
 Blocks are contiguous and temporally ordered for two reasons. Random selection within
 a subject would place overlapping windows on both sides of the split, and contiguous
