@@ -2,6 +2,8 @@
 
 Project context for Claude Code. Read this before writing any code.
 
+> Disclaimer: work in progress, drafted with Claude Code. Provisional and subject to revision until updated with all the relevant information.
+
 ---
 
 ## What this project is

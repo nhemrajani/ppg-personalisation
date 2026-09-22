@@ -8,6 +8,10 @@ Research log (password protected): https://neeha.xyz/ppg-personalisation
 Weekly entries, current results, and the standing of each deliverable. The password
 is shared separately.
 
+> Disclaimer: this repository is a work in progress and is being drafted with Claude
+> Code. Everything here is provisional and subject to revision until I have updated
+> it with all the relevant information.
+
 ---
 
 ## The Question
