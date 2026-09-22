@@ -211,6 +211,13 @@ Record environment: package versions, hardware, runtime.
 ### Gate 4 — Arm A reproduces
 Ridge on frozen embeddings, PaPaGei's evaluation protocol, bootstrap intervals. Compare to 11.53 / 10.92.
 
+**Open issue: 11.53 is not a leave-one-subject-out number** (verified 2026-09-22). The paper's linear evaluation uses a single fixed subject-level train/val/test split: 80/10/10 for in-domain datasets, **60/20/20 for out-of-domain**. PPG-DaLiA is out-of-domain (unseen in pretraining), so roughly 9/3/3 subjects. PaPaGei's feature-extraction job chunking is consistent with about 3 test subjects. So 11.53 is an MAE over ~3 held-out people, with 500-run bootstrap intervals.
+
+Consequences:
+- **Reproduction and Arm A are two different numbers.** Reproduce 11.53 under their 9/3/3 split. Arm A under our leave-one-subject-out rotation will differ and is not expected to equal it.
+- **Their split files are not public.** `utilities.py` reads `data/dalia/{train,val,test}.csv`, which are not in the repo. Which 3 subjects were held out is unknown, and with 3 test subjects the MAE depends heavily on which ones. Options: ask the authors for the split, or report the distribution of MAE over all 9/3/3 splits (455 choices of test subjects) and check whether 11.53 falls inside it.
+- The reference-numbers table mixes protocols: the classical rows are leave-one-subject-out, the frozen-probe rows are this fixed split. Label them as such before comparing.
+
 If it doesn't match: debug against their published intermediate values. If it still doesn't, document the discrepancy carefully. A documented failed reproduction is a legitimate result.
 
 ### Gate 5 — Experiment harness
