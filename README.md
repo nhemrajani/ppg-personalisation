@@ -58,7 +58,7 @@ cost more than the accuracy it returns.
 ## The Gap
 
 The PPG foundation model literature names three open problems, namely on-device
-efficiency, per-person personalisation, and fairness across subpopulations, while
+efficiency, per-person personalisation, and performance across subpopulations, while
 most large-laboratory work has concentrated instead on scale and pretraining. Four
 categories of personalisation method are now available: normalisation, domain
 adaptation, parameter-efficient fine-tuning, and retrieval. Each has been
@@ -86,7 +86,32 @@ Stated operationally, so that each can be measured.
 | RQ5 | Backbone. Does per-person adaptation yield greater benefit on PaPaGei-P, whose pretraining objective clusters by subject, or on PaPaGei-S, whose objective is organised by waveform morphology? |
 
 RQ5 is the cheapest novel contribution available here, being the same experiment run
-twice.
+twice. The comparison is clean because the two checkpoints share an embedding
+architecture: the convolutional trunk, pooling and projection are identical tensor for
+tensor, and differ only in their weights. PaPaGei-S carries additional
+mixture-of-experts heads, but these branch off after pooling, served as auxiliary
+targets during pretraining, and do not contribute to the embedding. The comparison
+therefore isolates the pretraining objective.
+
+## Reference Numbers
+
+Published mean absolute error for heart-rate estimation on PPG-DaLiA, in BPM.
+
+| Approach | MAE |
+| --- | --- |
+| Classical, leave-one-subject-out (Schaeck 2017) | ~20.5 |
+| Classical, leave-one-subject-out (SpaMa) | ~15.6 |
+| Statistical features | 13.1 |
+| PaPaGei-S, frozen probe | 11.5 |
+| PaPaGei-P, frozen probe | 10.9 |
+| TF-C, frozen | 10.0 |
+| Chronos, frozen | 9.7 |
+| MOMENT, frozen | 8.8 |
+| Supervised, task-specific (Conv-LSTM) | 6.3 |
+
+The distance between frozen probing, at roughly 11, and supervised task-specific
+training, at 6.3, is the headroom. The study asks how much of it per-person adaptation
+recovers, and at what cost.
 
 ## Data
 
@@ -114,7 +139,8 @@ unsolved.
 ## Preprocessing
 
 PaPaGei's published pipeline is followed exactly, since deviation without reason
-makes RQ1 unanswerable. A fourth-order Chebyshev bandpass between 0.5 and 12 Hz is
+makes RQ1 unanswerable. A fourth-order Chebyshev Type II bandpass between 0.5 and
+12 Hz is
 applied with `filtfilt` to avoid phase distortion; the signal is segmented into
 eight-second windows with six seconds of overlap; windows more than 25 per cent
 flatline are discarded; each window is z-scored; and the result is resampled to
@@ -163,22 +189,31 @@ never on the test set. Hyperparameter ranges are fixed in advance of any test re
 
 ## The Arms
 
-Five conditions, with a sixth held as optional. Each is evaluated on the same test
-set for the same subject, so the numbers are directly comparable.
+Six conditions. Each is evaluated on the same test set for the same subject, so the
+numbers are directly comparable.
 
 | | Model | Personalisation | Cost per person |
 | --- | --- | --- | --- |
 | A | Shared | None. Frozen encoder, ridge regression trained on the other fourteen subjects, applied unchanged. The baseline. | Zero |
 | B | Shared | Per-person normalisation, with statistics drawn from the adaptation set alone. | Two numbers |
+| B2 | Shared | Population subjects weighted by how closely their embedding distributions resemble the target's, using the target's unlabelled signal alone. | Zero |
 | C1 | Per user | Per-person linear probe on frozen embeddings, warm-started from the population solution and shrunk toward it. | 513 numbers |
-| C2 | Per user | Parameter-efficient adaptation: frozen encoder plus small trainable components. | Adapter parameters, swept by rank |
-| D | Per user | Full fine-tuning of all five million parameters. An upper bound, not a deployment candidate. | Five million parameters |
-| E | Shared | Optional. Population model plus demographic features already recorded in the dataset. | Four numbers |
+| C2 | Per user | Parameter-efficient adaptation: frozen encoder plus small trainable components. | Roughly 10³ to 10⁴, swept by rank |
+| D | Per user | Full fine-tuning of every parameter on the embedding path. An upper bound, not a deployment candidate. | 4,993,024 |
 
 Arm B carries a known trap. Where normalisation statistics overlap in time with the
 evaluation data, performance is inflated, as Otesteanu et al. (2026) demonstrate. The
 buffer prevents this, provided the statistics are computed exclusively from the
 adaptation set.
+
+Arm B2 adapts without any labels from the target. The fourteen population subjects
+are weighted by how closely their embedding distributions resemble the target's, which
+requires only the target's unlabelled signal. The principle is adapted from GAUL (Kim
+et al., 2025) and reimplemented within this framework, so that the backbone stays
+constant and the cost comparison holds. It stores nothing per person yet is
+considerably more sophisticated than rescaling. Should it approach the labelled arms,
+that would be the most deployment-relevant result in the study, since it asks nothing
+of the member beyond wearing the device.
 
 Arm C1 is run warm-started as the primary variant, with a from-scratch variant
 reported for comparison. Warm-starting handles cold start, since a person with no
@@ -195,7 +230,10 @@ The options, in ascending order of ambition, are to adapt only the final project
 layer, to adapt only the 1×1 convolutions, which are matrix multiplications and take
 LoRA unchanged, to apply low-rank decomposition to reshaped convolutional kernels, or
 to insert adapter blocks between convolutional blocks. Adapting the final projection
-layer is the named fallback, and a more expressive variant is attempted first.
+layer is the named fallback, and a more expressive variant is attempted first. That
+layer is a 512 by 512 projection of 262,656 parameters; low-rank adaptation of it
+costs 1,024 parameters per unit of rank, which places ranks one to ten across the
+intended cost range and makes rank the cost axis.
 
 Arm D is expected to overfit given only minutes of one person's data, and may perform
 worse than Arm A. That is itself a result, since it demonstrates that adaptation
@@ -264,7 +302,7 @@ the mean, to establish whether adaptation helps everyone or rescues a poorly-ser
 minority, and whether the subjects worst served by the population model gain most. By
 subject characteristic, using the Fitzpatrick skin type, sex, age and fitness level
 recorded in the dataset; with fifteen subjects this is illustrative only and is
-labelled as such rather than reported as a fairness finding.
+labelled as such rather than reported as a demographic finding.
 
 ## Schedule
 
@@ -297,8 +335,10 @@ repository is installed in Week 2 rather than Week 5, so that installation probl
 surface early. The convolutional adaptation question has no published answer for a
 one-dimensional signal encoder, which is why adapting the final projection layer is
 treated as an acceptable outcome rather than a fallback. Where scope must be cut, it
-is cut in preference to quality: the arms are prioritised A, B, C1, C2, and three
-arms done properly with honest statistics is a better result than four done badly.
+is cut in preference to quality. Arms are cut in the order D, then C2, then B2, which
+preserves points at both ends of the cost axis for as long as possible, and three arms
+done properly with honest statistics is a better result than four done badly. The
+splitting protocol, the confidence intervals and the reproduction check are never cut.
 
 ## Deliverables
 
@@ -321,12 +361,13 @@ improvement.
 
 Stated in advance rather than discovered late.
 
-- Fifteen subjects is thin for a per-person question, and the subgroup analyses are illustrative only, not fairness findings.
+- Fifteen subjects is thin for a per-person question. The study can ask whether poorly served individuals benefit disproportionately, which concerns the distribution of performance, but it cannot support demographic claims, and subgroup analyses are illustrative only.
 - The task is heart rate, chosen for verifiability rather than because it is unsolved.
 - The baseline for comparison is per-person normalisation, not the raw population model, and per-window normalisation in preprocessing already removes some individual variation.
 - Applying parameter-efficient methods to a convolutional encoder is an open implementation question, with adapting the final projection layer as the named fallback.
 - The frontier measures adaptation and storage cost but not serving cost, which is dominated by lost batching efficiency, so the reported frontier is a lower bound on production cost.
-- Low-rank adaptation of PPG models is already published; the contribution is the comparison of per-person methods on a common cost axis, not the method itself.
+- PaPaGei is mid-table on this task, with MOMENT (8.82), Chronos (9.65) and TF-C (9.99) all ahead of it. The aim is to reproduce PaPaGei's published figure, not to show that it is the best encoder.
+- Low-rank adaptation of PPG models is already published (Vision4PPG); the contribution is the per-person framing and the comparison of methods on a common cost axis, not the method itself.
 
 This is a representation-learning and efficiency study, conducted entirely on open
 foundation models and open datasets. It makes no clinical claims and offers no
@@ -351,11 +392,11 @@ scikit-learn, Jupyter, and Git with GitHub.
 | [Saha et al. (2025), Pulse-PPG](https://arxiv.org/abs/2502.01108) | An open, field-trained PPG foundation model, held as a comparison base. ([code](https://github.com/maxxu05/pulseppg)) |
 | [Abbaspourazad et al. (2024), Apple](https://arxiv.org/abs/2312.05409), ICLR 2024 | A consumer-scale PPG and ECG foundation model, showing that the representations carry health signal. |
 | [Narayanswamy et al. (2024), Google](https://research.google/pubs/scaling-wearable-foundation-models), ICLR 2025 | How wearable foundation models scale with data, compute and size. |
-| [Koerber et al. (2023)](https://pubmed.ncbi.nlm.nih.gov/36333652/) | Heart-rate accuracy across skin tones, and the equity motivation for the study. |
+| [Koerber et al. (2023)](https://pubmed.ncbi.nlm.nih.gov/36333652/) | Heart-rate accuracy across skin tones, and the motivation for examining the distribution of per-person performance. |
 | [Schmidt et al. (2018), WESAD](https://archive.ics.uci.edu/dataset/465/wesad) | The secondary dataset, should time permit. |
 
 The full annotated bibliography, covering foundation models, the case for
-personalisation, domain adaptation, normalisation, datasets, signal quality, fairness
+personalisation, domain adaptation, normalisation, datasets, signal quality, population differences
 and efficiency, will be published here with the literature review.
 
 ---
@@ -364,6 +405,8 @@ and efficiency, will be published here with the literature review.
 
 ```
 src/                 Reusable code: data loading, evaluation, model wrappers
+external/papagei/    PaPaGei source, as a git submodule pinned to a known commit
+weights/             Pretrained checkpoints. Not committed; downloaded from Zenodo.
 notebooks/           Exploration and plotting
 data/                PPG-DaLiA. Not committed; downloaded separately.
 results/             Output tables, saved embeddings, experiment records
@@ -378,24 +421,45 @@ log does.
 
 ### Environment
 
-Requires Python 3.10 or later. The environment is isolated in `venv/`, which is not
-committed; `requirements.txt` records exactly what to install so that the pipeline
-reproduces elsewhere.
+Runs on Python 3.12. The environment is isolated in `venv/`, which is not committed.
+PaPaGei's source is included as a git submodule pinned to a known commit, so clone
+with submodules:
 
 ```bash
+git clone --recurse-submodules https://github.com/nhemrajani/ppg-personalisation.git
+cd ppg-personalisation
 python3.12 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+pip install --no-deps -r requirements-nodeps.txt
 ```
+
+The second install step is deliberate. PaPaGei's preprocessing imports two packages,
+pyPPG and biobss, each of which pins its entire 2022 development environment as a
+requirement, including numpy, scipy, pip and setuptools at versions that cannot be
+installed on current Python. PaPaGei uses a single small module from each: a
+Chebyshev Type II bandpass with zero-phase filtering from pyPPG, and flatline
+detection from biobss. Both are installed without their pins, and their genuine
+runtime imports are covered by `requirements.txt`.
+
+The pretrained weights are downloaded separately from
+[Zenodo](https://zenodo.org/records/13983110) into `weights/`, which is not
+committed:
+
+```bash
+mkdir -p weights
+for m in papagei_s papagei_p; do
+  curl -L -o weights/$m.pt "https://zenodo.org/records/13983110/files/$m.pt?download=1"
+done
+python -m src.papagei
+```
+
+The last command loads both encoders, passes random noise through each, and confirms
+a 512-dimensional output. It also verifies that the weights load strictly into the
+architecture and reports the parameter counts used on the cost axis.
 
 Activate the environment in every new terminal session. If Python cannot find a
 package you know you installed, an inactive environment is almost always the reason.
-
-After adding a package, re-record the environment:
-
-```bash
-pip freeze > requirements.txt
-```
 
 ### Getting the Data
 

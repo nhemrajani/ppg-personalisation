@@ -1,0 +1,3 @@
+[submodule "external/papagei"]
+	path = external/papagei
+	url = https://github.com/Nokia-Bell-Labs/papagei-foundation-model.git

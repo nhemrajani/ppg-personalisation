@@ -8,6 +8,7 @@ __pycache__/
 data/*
 !data/.gitkeep
 results/embeddings/
+weights/
 *.pkl
 *.npz
 *.pt

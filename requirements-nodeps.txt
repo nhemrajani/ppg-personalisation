@@ -1,0 +1,9 @@
+# Installed with --no-deps. Both packages pin their entire 2022 development
+# environments as requirements (numpy 1.22-1.23, scipy 1.9, pip, setuptools,
+# pyinstaller), which cannot be installed on Python 3.12 and are not needed.
+# PaPaGei uses one small module from each:
+#   pyPPG.preproc.Preprocess                 cheby2 bandpass + filtfilt (scipy, numpy)
+#   biobss.sqatools.detect_flatline_segments flatline detection
+# Their genuine runtime imports are satisfied by requirements.txt.
+pyPPG==1.0.41
+biobss==0.1.1
