@@ -32,7 +32,8 @@ from src.stage4 import embeddings
 RANKS = (1, 2, 4, 8, 16)
 IN_BAND = (1, 2, 4)
 BUDGETS = (2, 5, 10, 20, 40, None)
-STEPS, BATCH, LR, SEED = 200, 32, 1e-3, 0
+STEPS, BATCH, SEED = 200, 32, 0
+LR = {"C2": 1e-3, "D": 1e-5}  # D diverges above 1e-5; see the pre-registration
 TARGET_LAYER = "basicblock_list.17.conv2.conv"
 TOLERANCE = 1e-4
 
@@ -86,6 +87,14 @@ def run_one(subject: int, budget, rank: int | None, protocol: str, index, device
                      if not n.startswith(("expert_layers", "gating_network"))]
         cost = sum(p.numel() for p in trainable)
 
+    # Targets are standardised on population statistics, with the scaling folded
+    # into the head so the arm still starts exactly at Arm A while the loss is O(1).
+    mu = float(y[split.population].mean())
+    sd = float(y[split.population].std()) or 1.0
+    with torch.no_grad():
+        head.weight.div_(sd)
+        head.bias.copy_((head.bias - mu) / sd)
+
     windows = _windows(subject)
     local = {int(v): i for i, v in enumerate(np.flatnonzero(subj == subject))}
     chunk = budget_prefix(split, index, budget)
@@ -95,8 +104,9 @@ def run_one(subject: int, budget, rank: int | None, protocol: str, index, device
         return None
 
     x_adapt = torch.from_numpy(windows[rows]).unsqueeze(1)
-    y_adapt = torch.from_numpy(y[chunk].astype(np.float32))
-    optimiser = torch.optim.Adam(trainable + list(head.parameters()), lr=LR)
+    y_adapt = torch.from_numpy(((y[chunk] - mu) / sd).astype(np.float32))
+    optimiser = torch.optim.Adam(trainable + list(head.parameters()),
+                                 lr=LR["D" if rank is None else "C2"])
 
     # Registered assertion: before any training, the arm must reproduce Arm A.
     # The low-rank correction is zero at initialisation and Arm D has not moved,
@@ -104,7 +114,7 @@ def run_one(subject: int, budget, rank: int | None, protocol: str, index, device
     model.eval()
     with torch.inference_mode():
         start = head(model(torch.from_numpy(windows[test_rows[:256]]).unsqueeze(1).to(device))[0])
-    drift = float(np.abs(start.squeeze(-1).cpu().numpy() - base.predictions[:256]).max())
+    drift = float(np.abs(start.squeeze(-1).cpu().numpy() * sd + mu - base.predictions[:256]).max())
     assert drift < 1e-2, (
         f"S{subject} {('C2 rank ' + str(rank)) if rank else 'D'}: at initialisation the arm "
         f"differs from Arm A by {drift:.3f} BPM. It must reproduce Arm A before training."
@@ -125,7 +135,7 @@ def run_one(subject: int, budget, rank: int | None, protocol: str, index, device
     with torch.inference_mode():
         for i in range(0, len(x_test), 256):
             preds.append(head(model(x_test[i:i+256].to(device))[0]).squeeze(-1).cpu().numpy())
-    prediction = np.concatenate(preds)
+    prediction = np.concatenate(preds) * sd + mu  # back to BPM before scoring
     y_test = y[split.test]
 
     return Run(
@@ -134,7 +144,7 @@ def run_one(subject: int, budget, rank: int | None, protocol: str, index, device
         stored_bytes=cost * 4, mae=round(mae(y_test, prediction), 4),
         rmse=round(rmse(y_test, prediction), 4), pearson=round(pearson(y_test, prediction), 4),
         n_test_windows=len(y_test), rank=rank, alpha=base.alpha, seed=SEED,
-        hyperparameters=f'{{"steps": {STEPS}, "lr": {LR}, "layer": "{TARGET_LAYER}"}}',
+        hyperparameters=f'{{"steps": {STEPS}, "lr": {LR["D" if rank is None else "C2"]}, "layer": "{TARGET_LAYER}"}}',
         notes="in-band" if rank in IN_BAND else ("extension" if rank else "upper bound"),
     )
 
