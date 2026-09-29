@@ -166,15 +166,25 @@ subject-level split.
 
 | Approach | MAE | Protocol |
 | --- | --- | --- |
-| Classical (Schaeck 2017) | ~20.5 | Leave-one-subject-out |
-| Classical (SpaMa) | ~15.6 | Leave-one-subject-out |
+| Classical (Schaeck 2017) | 20.45 | Leave-one-subject-out |
+| Classical (SpaMa) | 15.56 | Leave-one-subject-out |
+| Classical (SpaMaPlus) | 11.06 | Leave-one-subject-out |
 | Statistical features | 13.1 | Leave-one-subject-out |
 | PaPaGei-S, frozen probe | 11.5 | Fixed 60/20/20 subject split |
 | PaPaGei-P, frozen probe | 10.9 | Fixed 60/20/20 subject split |
 | TF-C, frozen | 10.0 | Fixed 60/20/20 subject split |
 | Chronos, frozen | 9.7 | Fixed 60/20/20 subject split |
 | MOMENT, frozen | 8.8 | Fixed 60/20/20 subject split |
-| Supervised, task-specific (Conv-LSTM) | 6.3 | Leave-one-subject-out |
+| Supervised CNN, average of 7 (Reiss et al.) | 8.82 | Leave-one-subject-out |
+| Supervised CNN, 7-model ensemble (Reiss et al.) | 7.65 | Leave-one-subject-out |
+| Supervised, task-specific Conv-LSTM (Wilkosz and Szczesna) | 6.28 | Leave-one-subject-out |
+
+Two numerical coincidences in this table are genuine and not transcription errors.
+Reiss et al.'s CNN average on PPG-DaLiA is 8.82, the same figure as MOMENT's
+frozen-probe result of 8.82 [8.68, 8.96]; and their constrained CNN is 9.99, the same
+as TF-C's frozen probe. The supervised rows use PPG **and accelerometer**, while every
+frozen-probe row uses PPG alone, so part of the distance between them is the motion
+channel rather than anything adaptation could recover.
 
 The distance between frozen probing, at roughly 11, and supervised task-specific
 training, at 6.3, is the headroom. The study asks how much of it per-person

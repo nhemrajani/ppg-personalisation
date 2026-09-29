@@ -171,14 +171,16 @@ This is the hardest part of the design. Get it wrong and every number is invalid
 
 ## The six arms
 
-| Arm | Description | Cost per person |
-|---|---|---|
-| A | Frozen encoder, ridge on population set, applied unchanged | 0 |
-| B | As A, with a per-person affine correction (scale and offset) fitted on the target's adaptation block and applied to the predictions | 2 values, 8 bytes |
-| B2 | As A, population subjects weighted by embedding similarity to target (unlabelled) | 0 |
-| C1 | Frozen encoder, ridge warm-started from population solution, updated toward individual | 513 |
-| C2 | Frozen encoder + small trainable components, trained on adaptation block | 10³–10⁴ |
-| D | All encoder parameters retrained on adaptation block | 4,993,024 (both backbones, embedding path) |
+| Arm | Description | Trainable per person | Stored per person | Target labels needed |
+|---|---|---|---|---|
+| A | Frozen encoder, ridge on population set, applied unchanged | 0 | 0 | **none** |
+| B | As A, with a per-person affine correction on the predictions | 2 | 8 B | yes |
+| B2 | As A, population subjects reweighted by similarity to the target | 0 | **513 values, or refit at inference** | **none** |
+| C1 | Frozen encoder, ridge warm-started from the population solution | 513 | ~2 KB | yes |
+| C2 | Frozen encoder plus low-rank corrections | 10³-10⁴ | ~4-40 KB | yes |
+| D | All encoder parameters on the embedding path retrained | 4,993,024 | ~20 MB | yes |
+
+**Arm B2's storage is not zero, correcting the earlier table.** B2 reweights the population and refits the ridge, which yields a different 513-coefficient model per person. Deploying it means storing those coefficients, which puts it level with C1, or recomputing the fit at inference. What B2 costs nothing of is **labelled data from the user**, which is a different axis and now has its own column. That changes B2's standing for the better: it is not a method that buys 0.16 BPM for free and looks pointless, it is the only method besides the unadapted baseline that asks nothing of the user, and commercially that distinction matters more than parameter count.
 
 **Arm B:** statistics come *exclusively* from the adaptation block. The buffer guarantees temporal disjointness. This mitigates the normalisation-inflation effect documented in Otesteanu et al. (2026).
 
@@ -352,7 +354,13 @@ Headline, PaPaGei-P, activity-stratified, all available personal data, mean per-
 | C1 | 9.69 | -2.03 | 513 |
 | C1-scratch | 9.80 | -1.92 | 513 |
 
-**Two values per person capture essentially all the available gain.** Going from 2 stored values to 513 buys nothing: C1 is 0.04 BPM *worse* than B, well inside noise. That is the frontier's first real shape, and it is consistent with the shrinkage mechanism: if the error is mostly a systematic offset, an affine correction removes it and extra capacity has nothing left to do.
+**Two values per person capture essentially all the available gain, in aggregate.** Paired across all fifteen subjects, C1 minus B is **-0.047 BPM with a 95 per cent interval of [-0.67, +0.62]**, C1 better on 8 and B better on 7. By the study's own discipline that is no detectable difference at this sample size.
+
+**But do not say the residual is therefore a scalar rescaling.** Arm B's prediction is a linear model, so it lies inside Arm C1's solution space, and if the residual really were just a rescaling then C1 would match B subject by subject. It does not: the two trade by up to **+3.09 BPM on S5, where C1 is much better, and -2.46 on S8, where B is**. The aggregate tie hides two methods that suit different people. The honest claim is that 513 parameters buy nothing *on average*, not that the other 511 dimensions are empty.
+
+Checked separately: C1's shrinkage selection lands on the weakest value in the registered range for every subject, so the warm start is not doing work at full data, and C1 at the weakest shrinkage is identical to C1 as selected.
+
+**The composition hypothesis for S6 is refuted.** The obvious explanation for S6's shortfall, that its adaptation and test blocks differ in activity mix, does not hold. S6's adaptation-to-test gap in mean heart rate is **0.03 BPM, the second smallest of all fifteen**, and across subjects the shortfall correlates with composition mismatch at **r = -0.53**, the wrong sign. Whatever stops the affine correction working on S6 and S11, both of which have large bias and little gain, it is not composition. A candidate worth testing later: the offset those subjects need may vary within the test block, which a single scale and offset cannot follow.
 
 **The registered Arm B prediction is confirmed on its main claim.** Arm B's improvement tracks each subject's bias at **r = 0.84, p = 0.00008**, and tracks distance from the population median at r = 0.61, p = 0.016. S5, the worst-served subject, gains most of anyone at -7.75 BPM. **The prediction was half wrong on S6**, which ranks only 6th of 15 at -1.96 despite having the second-largest bias. A plausible explanation, untested: S6's adaptation block is 43 per cent transient and contains no lunch, walking or working, so the correction fitted there may not transfer to its test block.
 
