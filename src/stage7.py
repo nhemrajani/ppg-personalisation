@@ -41,13 +41,22 @@ def _windows(subject: int) -> np.ndarray:
     return preprocess_subject(f"S{subject}").windows
 
 
-def _head_from_ridge(x_pop, y_pop, alpha, device):
-    """Arm A's ridge solution as a linear layer, so training starts from it."""
-    model = GramRidge(x_pop, y_pop)
+def _head_from_ridge(x_raw, y_pop, alpha, device, scaler: Standardiser):
+    """Arm A's ridge solution as a linear layer over RAW encoder output.
+
+    The ridge is fitted on standardised embeddings, but the encoder emits raw
+    ones, so the standardiser is folded into the layer's weights. Without this
+    the head is applied to features on a different scale from the ones it was
+    fitted on, which silently produces predictions far worse than Arm A.
+    """
+    model = GramRidge(scaler(x_raw), y_pop)
+    w = model.weights(alpha)
+    weight = w / scaler.scale
+    bias = float(model.y_mean - (scaler.mean / scaler.scale + model.x_mean) @ w)
     head = nn.Linear(EMBEDDING_DIM, 1).to(device)
     with torch.no_grad():
-        head.weight.copy_(torch.tensor(model.weights(alpha), dtype=torch.float32).view(1, -1))
-        head.bias.fill_(float(model.y_mean - model.x_mean @ model.weights(alpha)))
+        head.weight.copy_(torch.tensor(weight, dtype=torch.float32).view(1, -1))
+        head.bias.fill_(bias)
     return head, model
 
 
@@ -59,8 +68,8 @@ def run_one(subject: int, budget, rank: int | None, protocol: str, index, device
     base = arm_a(x_cached, y, split, subj)
 
     scaler = Standardiser.fit(x_cached[split.population])
-    x_pop, y_pop = scaler(x_cached[split.population]), y[split.population]
-    head, ridge = _head_from_ridge(x_pop, y_pop, base.alpha, device)
+    head, ridge = _head_from_ridge(x_cached[split.population], y[split.population],
+                                   base.alpha, device, scaler)
 
     model = load_backbone("p", device)
     adapters: list[LoRAConv1d] = []
@@ -88,6 +97,18 @@ def run_one(subject: int, budget, rank: int | None, protocol: str, index, device
     x_adapt = torch.from_numpy(windows[rows]).unsqueeze(1)
     y_adapt = torch.from_numpy(y[chunk].astype(np.float32))
     optimiser = torch.optim.Adam(trainable + list(head.parameters()), lr=LR)
+
+    # Registered assertion: before any training, the arm must reproduce Arm A.
+    # The low-rank correction is zero at initialisation and Arm D has not moved,
+    # so any disagreement here is a bug in the head or the encoder path.
+    model.eval()
+    with torch.inference_mode():
+        start = head(model(torch.from_numpy(windows[test_rows[:256]]).unsqueeze(1).to(device))[0])
+    drift = float(np.abs(start.squeeze(-1).cpu().numpy() - base.predictions[:256]).max())
+    assert drift < 1e-2, (
+        f"S{subject} {('C2 rank ' + str(rank)) if rank else 'D'}: at initialisation the arm "
+        f"differs from Arm A by {drift:.3f} BPM. It must reproduce Arm A before training."
+    )
 
     torch.manual_seed(SEED)
     generator = np.random.default_rng(SEED)
