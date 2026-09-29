@@ -300,3 +300,31 @@ which is how much data is needed rather than which data happens to arrive first.
 **The gap between the two curves is the cost of unrepresentative calibration**, and it
 is a better result than either curve alone. Neither replaces the other and both are
 reported.
+
+## Amendment to Arm D's learning rate, registered 29 September 2026
+
+Registered before any valid Arm D result exists. The earlier rows were produced by a
+defective implementation and were deleted rather than reported.
+
+Arm D was registered at a learning rate of 1e-3, fixed in advance precisely because it
+is the arm most exposed to tuning. At that rate it **diverges**: training loss on the
+adaptation block rises from under 1 to the order of 10⁶ within a few steps and never
+recovers. The registered setting does not produce a result to report; it produces a
+broken model.
+
+The rate was therefore reselected **on training-loss convergence on the adaptation
+block alone**, across two subjects, at 1e-3, 3e-4, 1e-4, 3e-5 and 1e-5. Only 3e-5 and
+1e-5 converge; 1e-5 reaches the lowest final training loss on both. **Arm D runs at
+1e-5.** No test-block quantity was consulted at any point in that choice, and the
+criterion was whether the arm trains at all rather than how well it scores.
+
+**Arm C2 keeps the registered 1e-3**, which converges on both subjects and gives the
+lowest final training loss of the rates tested.
+
+**Implementation clarification for both arms.** The regression target is heart rate in
+BPM, so a squared-error loss starts in the hundreds and its gradients scale with it.
+Targets are standardised using the **population** training statistics, and the scaling
+is folded into the output layer so the arm still begins exactly at Arm A. Predictions
+are returned to BPM before scoring. This is a numerical detail rather than a design
+choice, but it is recorded because it is the difference between an arm that trains and
+one that does not.
