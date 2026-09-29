@@ -23,7 +23,7 @@ from src.splits import load_index
 from src.stage4 import OUR_ALPHAS, OUR_FOLDS, embeddings
 
 SIZES = (2, 4, 6, 8, 10, 12, 14)
-SEEDS = (0, 1, 2)
+SEEDS = tuple(range(25))  # 25 draws per size; three was too few to separate sizes
 
 
 def main() -> None:
@@ -35,6 +35,7 @@ def main() -> None:
         x_all = np.asarray(embeddings(backbone, "asis"), dtype=np.float64)
         print(f"\nPaPaGei-{backbone.upper()}")
         curve: dict[int, list[float]] = {n: [] for n in SIZES}
+        curve_subjects: dict[int, list[int]] = {n: [] for n in SIZES}
 
         for held_out in subjects:
             pool = np.array([s for s in subjects if s != held_out])
@@ -61,6 +62,7 @@ def main() -> None:
                     prediction = GramRidge(x_train, y_train).predict(x_test, alpha)
                     score = mae(y_test, prediction)
                     curve[size].append(score)
+                    curve_subjects[size].append(int(held_out))
 
                     append(Run(
                         arm="A-population-size", backbone=backbone, polarity="asis",
@@ -72,13 +74,32 @@ def main() -> None:
                     ))
             print(f"  S{held_out} done", flush=True)
 
-        print(f"  {'subjects':>9s} {'mean MAE':>9s} {'change':>8s}")
+        print(f"  {'subjects':>9s} {'mean MAE':>9s} {'sem':>7s} {'change':>8s}")
         previous = None
         for size in SIZES:
-            value = float(np.mean(curve[size]))
+            values = np.array(curve[size])
+            value = float(values.mean())
+            sem = float(values.std(ddof=1) / np.sqrt(len(values)))
             change = "" if previous is None else f"{value - previous:+8.3f}"
-            print(f"  {size:9d} {value:9.2f} {change:>8s}")
+            print(f"  {size:9d} {value:9.2f} {sem:7.3f} {change:>8s}")
             previous = value
+
+        # The six-versus-fourteen comparison, paired within subject rather than as
+        # two means with overlapping error bars.
+        per_subject = {}
+        for size in (6, 14):
+            by_subject: dict[int, list[float]] = {}
+            for value, subj in zip(curve[size], curve_subjects[size]):
+                by_subject.setdefault(subj, []).append(value)
+            per_subject[size] = np.array([np.mean(by_subject[s]) for s in sorted(by_subject)])
+        difference = per_subject[6] - per_subject[14]
+        rng = np.random.default_rng(0)
+        boot = np.array([difference[rng.integers(0, len(difference), len(difference))].mean()
+                         for _ in range(10000)])
+        lo, hi = np.percentile(boot, [2.5, 97.5])
+        print(f"\n  paired per-subject difference, six against fourteen population subjects:")
+        print(f"    mean {difference.mean():+.3f} BPM, 95% interval [{lo:+.3f}, {hi:+.3f}], "
+              f"worse with six on {int((difference > 0).sum())}/15 subjects")
 
 
 if __name__ == "__main__":

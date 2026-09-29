@@ -340,7 +340,27 @@ config = {arm, backbone, subject, budget_minutes, split_type, seed, hyperparams}
 6 arms × 6 budgets × 15 subjects × 2 backbones × 2 split protocols, plus the C2 rank sweep and the C1 from-scratch variant, is **on the order of 3,000 runs**. Computationally trivial, impossible to track by hand.
 
 ### Gate 6 — Arms B, B2, C1
-Splitting protocol implemented. Three arms with confidence intervals. First real comparison.
+**Status: passed 2026-09-29.** `python -m src.stage6`, 1,500 rows, 844 seconds. All four degenerate assertions pass: each arm reproduces Arm A exactly when it is doing nothing.
+
+Headline, PaPaGei-P, activity-stratified, all available personal data, mean per-subject MAE:
+
+| Arm | MAE | Against Arm A | Cost per person |
+| --- | --- | --- | --- |
+| A | 11.72 | | 0 |
+| **B** | **9.65** | **-2.08** | **2 values** |
+| B2 | 11.57 | -0.16 | 0 |
+| C1 | 9.69 | -2.03 | 513 |
+| C1-scratch | 9.80 | -1.92 | 513 |
+
+**Two values per person capture essentially all the available gain.** Going from 2 stored values to 513 buys nothing: C1 is 0.04 BPM *worse* than B, well inside noise. That is the frontier's first real shape, and it is consistent with the shrinkage mechanism: if the error is mostly a systematic offset, an affine correction removes it and extra capacity has nothing left to do.
+
+**The registered Arm B prediction is confirmed on its main claim.** Arm B's improvement tracks each subject's bias at **r = 0.84, p = 0.00008**, and tracks distance from the population median at r = 0.61, p = 0.016. S5, the worst-served subject, gains most of anyone at -7.75 BPM. **The prediction was half wrong on S6**, which ranks only 6th of 15 at -1.96 despite having the second-largest bias. A plausible explanation, untested: S6's adaptation block is 43 per cent transient and contains no lunch, walking or working, so the correction fitted there may not transfer to its test block.
+
+**The registered Arm B2 prediction is confirmed.** B2 gains 0.16 BPM, close to nothing, as anticipated from the population curve showing fourteen subjects worth little more than six. Its ceiling is low because its whole mechanism is reweighting subjects whose number barely matters.
+
+**Small budgets make personalisation actively harmful, for a compositional reason.** At 2 and 5 minutes every adaptive arm is far worse than Arm A, and 5 minutes is worse than 2. This is not a sample-size effect and not a bug. Budgets are prefixes in time, as registered, so the first minutes of a recording are sitting still: for S5 the 5-minute budget has a mean heart rate of 94.7 against a test block at 125.5. The calibration window is unrepresentative of what is being predicted. That is precisely the cold-start problem, and it is a deployment-relevant result rather than an artefact, but it must be described as composition rather than data volume.
+
+A secondary budget definition, sampling proportionally across activity runs rather than taking a temporal prefix, would separate composition from volume. It is worth registering and running as a labelled variant.
 
 ### Gate 7 — Arm C2
 Resolve the convolutional question. Verify it trains and loss falls before worrying whether it helps. Rank sweep = the cost axis.
