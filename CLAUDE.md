@@ -98,7 +98,13 @@ PaPaGei's public repo does **not** contain the PPG-DaLiA segmentation step. Its 
 - **Filter at the native 64 Hz, before resampling.** pyPPG's `Preprocess` adds a 50 ms moving-average smoothing pass only at ≥75 Hz. Filtering at 64 Hz skips it; filtering after resampling to 125 Hz would silently add it.
 - **Z-score per window, after flatline rejection.** Their example notebook z-scores the whole signal *before* filtering, but that notebook is for PPG-BP. Do not copy its order for PPG-DaLiA.
 
-**Cross-check at Gate 2:** PPG-DaLiA's own heart-rate labels are defined on 8 s windows with a 2 s shift, so the label count summed over subjects should be 64,697. Ten-second windows would give one fewer window per subject (64,682), so the exact count does distinguish the two.
+**Window length: settled empirically, 2026-09-28.** Run `python -m src.verify_windows`; output in `results/window_length_check.txt`.
+
+The paper states two window lengths and they are not in conflict once located. The 10-second figure is in section 4.1 under **Pre-training**, whose Table 1 lists only VitalDB, MIMIC-III and MESA: 20,751,206 segments over 57,641 hours, which is 9.9998 seconds per segment, so those are 10 s non-overlapping pre-training windows. PPG-DaLiA is an **evaluation** dataset (Table 2, greyed as out-of-domain) and its appendix specifies 8 s windows with a 2 s shift.
+
+Counting PPG-DaLiA's own heart-rate labels confirms it. The label total across the fifteen subjects is **64,697**, exactly PaPaGei's reported sample count, and it matches the 8-second prediction for every individual subject. Ten-second windows give 64,682, fifteen fewer. **The analysis window is 8 s and the buffer rule of ≥8 s is correct.**
+
+Useful by-product, recorded in the same file: per-subject durations run from 87.5 minutes (S6) to 177.5 minutes (S10). Even the shortest subject supports the 40-minute budget with room for buffer and test block, which closes the "is there enough data per subject" risk flagged for Week 4.
 
 **Record the rejection rate per subject.** It varies, and it feeds the "usable minutes vs wear time" analysis.
 

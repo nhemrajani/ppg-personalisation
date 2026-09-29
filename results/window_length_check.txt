@@ -1,0 +1,23 @@
+Reading from /Users/neeharikahemrajani/Desktop/ppg+dalia/data.zip
+
+subj   minutes   labels      8 s     10 s
+S1       153.5     4603     4603     4602
+S2       136.8     4099     4099     4098
+S3       145.7     4367     4367     4366
+S4       152.5     4572     4572     4571
+S5       155.1     4649     4649     4648
+S6        87.5     2622     2622     2621
+S7       155.7     4668     4668     4667
+S8       134.7     4037     4037     4036
+S9       142.7     4277     4277     4276
+S10      177.5     5321     5321     5320
+S11      150.8     4521     4521     4520
+S12      131.9     3954     3954     3953
+S13      152.3     4565     4565     4564
+S14      149.3     4476     4476     4475
+S15      132.3     3966     3966     3965
+
+total             64697    64697    64682
+PaPaGei reports 64697 windows for PPG-DaLiA.
+
+The label grid and PaPaGei's count both give 8-second windows.

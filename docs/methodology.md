@@ -330,6 +330,17 @@ Four changes, each verified against PaPaGei's paper, code or released weights on
    leakage example in 4.4 was adjusted accordingly, and the buffer is at least eight
    seconds.
 
+   This was checked against the dataset itself rather than the paper alone, since the
+   paper gives both figures. The 10-second statement sits in section 4.1 under
+   pre-training, whose table covers only the three pre-training corpora, and the
+   arithmetic there (20,751,206 segments over 57,641 hours, or 9.9998 seconds each)
+   confirms it describes non-overlapping pre-training windows. PPG-DaLiA is an
+   evaluation dataset and its appendix specifies the 8-second window. PPG-DaLiA
+   supplies one heart-rate label per analysis window, and those labels total 64,697
+   across the fifteen subjects, exactly the sample count PaPaGei reports, matching the
+   8-second figure for every subject individually. Ten-second windows would give
+   64,682. The check is reproducible with `python -m src.verify_windows`.
+
 2. **Encoder class, in 4.3.** The draft described the encoder as `ResNet1DMoE` for
    both checkpoints. Only PaPaGei-S is; PaPaGei-P is a plain `ResNet1D`. Checking the
    released weights shows the embedding paths are identical tensor for tensor, so the
