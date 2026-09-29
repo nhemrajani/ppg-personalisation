@@ -162,3 +162,115 @@ subjects is a small sample but because the range does not exist in the data. Thi
 stated here so that it appears in the limitations as a hard constraint rather than a
 hedge, and it is the concrete reason the study measures the distribution of
 performance rather than making demographic claims.
+
+## Arm specifications, registered 29 September 2026
+
+Registered before any row exists for Arms B, B2, C1, C2 or D, which the experiment
+record confirms at the commit that carries this text.
+
+### Arm B, per-person affine correction
+
+Scale and offset are fitted by **ordinary least squares of the adaptation block's
+predictions against the adaptation block's labels**, then applied to the test block's
+predictions. Two stored values. The obvious choice, written down rather than assumed.
+
+### Arm B2, unlabelled similarity weighting
+
+The primary version follows GAUL's actual mechanism, which operates on predicted heart
+rate in one dimension rather than in embedding space:
+
+1. Fit the population ridge on the population set.
+2. Predict heart rate on the target's **unlabelled** windows.
+3. Fit a univariate Gaussian to those predictions, giving a mean and a standard
+   deviation.
+4. Weight each population subject by the density of **its own mean predicted heart
+   rate** under that Gaussian.
+5. Normalise the weights to sum to one.
+6. Refit the ridge with those subject weights.
+
+The bandwidth is the target's own predicted standard deviation, so there is no
+temperature parameter to tune. **A single pass is primary**; two and three passes are
+run as a sensitivity check.
+
+Registered as an optional secondary experiment: GAUL's **sample-level** weighting,
+down-weighting individual population windows whose predicted heart rate is far from
+the target's range, entering as row weights in weighted least squares.
+
+A variant weighting by **embedding-distribution similarity** is an extension of ours
+rather than GAUL's method, and will be labelled as such rather than attributed to Kim
+et al. If it is run, its distance measure and bandwidth are further registered
+choices, recorded before it runs.
+
+### Arm C1, warm-started per-person output layer
+
+The per-person solution minimises squared error plus a penalty on departure from the
+population solution. The shrinkage strength is swept over
+`numpy.logspace(-3, 6, 10)`, the same range as the ridge penalty. At the strong end
+the solution equals the population model, which is what makes the arm identical to
+Arm A at zero personal data.
+
+### Arm C2, low-rank adaptation
+
+Adapted layer: the **second convolution of the final residual block**, a single
+512-channel convolution. A rank-r correction there costs 2,048r parameters.
+
+**Primary sweep: ranks 1, 2 and 4**, costing 2,048, 4,096 and 8,192 parameters, all
+inside the 10³ to 10⁴ band the methodology's arms table states. **Ranks 8 and 16 are
+run as a labelled extension** at 16,384 and 32,768, outside that band, to show where
+the curve goes. The primary sweep and the table agree; the extension is reported as
+beyond the stated range.
+
+### Arm D, full fine-tuning
+
+Adam at a learning rate of 1e-3, batch size 32, **a fixed 200 steps with no early
+stopping**. The step count is fixed in advance precisely because this is the only arm
+that trains a full model and therefore the one most exposed to tuning. No stopping
+criterion consults the test block, at any point.
+
+The output layer is initialised from Arm A's ridge solution and trained jointly with
+the encoder, so that the arm begins from the population model rather than from noise.
+
+## Predictions, registered 29 September 2026
+
+Falsifiable statements about results that do not yet exist.
+
+**Arm B should help S5 and S6 disproportionately.** Ridge shrinks predictions toward
+the training mean, and the error of subjects far from the population centre is
+overwhelmingly systematic bias: 92 per cent for S5, 83 per cent for S6, against 2 to
+21 per cent for the well-served. A per-person scale and offset is the textbook
+correction for exactly that. The prediction is that Arm B's improvement tracks each
+subject's distance from the population median heart rate, and that the two outlying
+subjects gain most. If the improvement does not track bias, the mechanism is not
+shrinkage.
+
+**Arm B2's ceiling may be low.** The population curve shows fourteen subjects are
+worth little more than six. B2's entire mechanism is making better use of the same
+fourteen, so there may be little headroom to exploit. If B2 beats the baseline anyway,
+the gain comes from **which** subjects are used rather than how many, which is the
+more interesting of the two outcomes.
+
+## Correctness assertions, registered 29 September 2026
+
+Each arm must reduce to Arm A under the setting where it does nothing. These are
+asserted in code and halt the run if violated, in the same spirit as the splitting
+invariants.
+
+| Arm | Degenerate setting | Must equal |
+| --- | --- | --- |
+| B | scale 1, offset 0 | Arm A |
+| B2 | uniform weights | Arm A |
+| C1 | zero personal data, full shrinkage | Arm A |
+| C2 | low-rank correction at its zero initialisation | Arm A |
+
+If any fails, the run stops rather than proceeding.
+
+## Protocol and compute plan, registered 29 September 2026
+
+Arms B, B2 and C1 run under **both** split protocols, activity-stratified and naive
+temporal, since they cost minutes.
+
+Arms C2 and D run under the **activity-stratified protocol only**, with a
+**single-budget check** under the naive temporal protocol. The methodology presents
+the two protocols as a genuine comparison, so this asymmetry is recorded here rather
+than discovered later. The reason is compute: C2 and D train, and running both
+protocols would roughly double an already overnight job.
