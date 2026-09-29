@@ -292,11 +292,24 @@ Every subject reaches the full budget sweep. S6 is the binding case at 40.8 usab
 
 Both checkpoints reproduce, which is the clean branch of the registered 2x2. The published figure falls inside our 455-triple distribution for each: PaPaGei-P 10.92 at the 32nd percentile of a distribution with median 11.78, PaPaGei-S 11.53 at the 28th percentile of a median 12.77. Our medians sit about 1 BPM above the published values on both, consistently, which is what selecting a favourable split and the best of five pre-training runs would look like.
 
-**The headline methodological result.** Our central 90 per cent spans **7.73 BPM** for P and 7.68 for S; their published 95 per cent intervals span **0.24** and 0.26. A factor of **32 and 30**. Their interval bootstraps windows within one fixed choice of three test subjects; ours varies which three subjects those are. On a fifteen-subject benchmark the second is the uncertainty that matters, and it is thirty times the first. This is the sentence that supports Sub Question 2's argument for reporting distributions.
+**The headline methodological result.** Compared like with like, 95 per cent against 95 per cent: our interval spans **8.75 BPM** for P and 9.47 for S, theirs **0.24** and 0.26. A factor of **36** for both. (At 90 per cent ours spans 7.73 and 7.68, which is where the earlier factor of 32 came from; that comparison was 90 against 95 and understated it.) Their interval bootstraps windows within one fixed choice of three test subjects; ours varies which three subjects those are. On a fifteen-subject benchmark the second is the uncertainty that matters, and it is thirty times the first. This is the sentence that supports Sub Question 2's argument for reporting distributions.
 
 **Arm A, leave-one-subject-out, mean per-subject MAE:** P as-is 11.70, P flipped 11.64, S as-is 13.04, S flipped 13.82.
 
 **The polarity control did its job, and the hypothesis did not survive it.** The sign-invariance asymmetry is confirmed exactly as the training recipe predicts: flipping moves PaPaGei-P by +0.06 BPM, which is nothing, and moves PaPaGei-S by 0.79 BPM. P is sign-invariant, S is not. But the direction is the opposite of the inversion hypothesis. Flipping to restore conventional polarity makes S **worse**, better on only 3 of 15 subjects, so S prefers the wrist signal as it comes. Restoring convention does not recover accuracy, and the inversion does not explain PaPaGei's mid-table showing on this benchmark. Report it as a negative result; the morphological evidence for the inversion still stands, it simply does not have the consequence predicted.
+
+**A residual puzzle, to state rather than smooth over.** PaPaGei-S is morphology-sensitive, it is sign-sensitive as its training recipe predicts, and yet it prefers the wrist signal in the orientation it arrives in rather than the orientation its pre-training corpus was in. Those three do not sit together comfortably. Either the pre-training corpus orientation needs re-checking, or sensitivity to sign does not imply a preference for the orientation seen during pre-training. Report it as an open question.
+
+**The population model saturates at about six subjects** (`python -m src.population_curve`, figure `gate4_population_curve.png`). Mean per-subject MAE by number of population subjects, leave-one-subject-out, three random draws per size:
+
+| Subjects | 2 | 4 | 6 | 8 | 10 | 12 | 14 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| PaPaGei-P | 14.39 | 13.23 | 11.89 | 12.21 | 11.96 | 11.72 | 11.70 |
+| PaPaGei-S | 15.34 | 14.45 | 13.08 | 13.51 | 13.26 | 13.01 | 13.04 |
+
+Going from six subjects to fourteen, more than doubling the population, buys **0.19 BPM** on P and **0.04** on S. The bump at eight is sampling noise across the three draws. Meanwhile the worst subject sits at 24.46 against a mean of 11.70.
+
+So what remains after six subjects is not a shortage of population data. It is individual variation, which is exactly what per-person adaptation exists to address. This is a direct argument for the study's premise, and it came out of work already done. It belongs in the midterm.
 
 **Sub Question 3 is not confounded by sign invariance.** P beats S on 14 of 15 subjects in both polarities, by 1.34 BPM as-is and 2.18 flipped. The ordering survives the control, so whatever separates the two objectives on this dataset is not their treatment of sign.
 
