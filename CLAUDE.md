@@ -168,11 +168,17 @@ This is the hardest part of the design. Get it wrong and every number is invalid
 
 **Arm C2 — the open problem.** Four options in ascending ambition:
 1. Adapt only the final projection layers ← **named fallback, always works**
-2. Adapt only the 1×1 convolutions (these *are* matrix multiplications, LoRA applies unchanged)
+2. ~~Adapt only the 1×1 convolutions.~~ **Does not exist in this encoder** (checked 2026-09-28): all 37 Conv1d layers have kernel size 3. The only matrix in the model is the `dense` projection. This option must come out of the proposal's ladder in 4.5.
 3. Low-rank decomposition on reshaped convolutional kernels
 4. Insert adapter blocks between convolutional blocks
 
 ~~Also worth probing: the MoE routing component may be cheaper to adapt.~~ **Not viable:** the MoE heads sit outside the embedding path (see The model), so adapting them cannot change the embedding the ridge head reads. They exist only in PaPaGei-S anyway.
+
+**Option 3 is feasible, spiked 2026-09-28.** `python -m src.spike_c2`. A kernel of shape (out, in, k) is treated as a matrix of shape (out, in*k) and given a low-rank correction, costing r * (out + in*k) per layer. On the final block's two 512-channel convolutions that is 2,048r per layer. Rank 4 on both layers, 16,384 parameters, trained on 512 windows of one subject for 60 steps: loss fell 1.007 to 0.371 against 1.009 to 0.557 for a trainable head alone, gradients reached the adapters, and the corrections moved. This says it runs and trains, not that it helps per person.
+
+Design note for the rank sweep: one convolution at ranks 1 to 4 spans 2,048 to 8,192 parameters, which sits inside the 10³ to 10⁴ band; adapting both convolutions at rank 4 leaves it. Set the sweep on a single convolution, or widen the band in the arms table.
+
+The correction initialises to exactly zero, so an unadapted model is identical to Arm A rather than close to it, which keeps the cost axis starting at a true zero and mirrors C1's warm start.
 
 Concrete costs for option 1: the `dense` projection is 512 × 512 + 512 = **262,656** parameters, above the 10³–10⁴ range in the arms table. LoRA on that layer costs 1,024 × rank (rank 1–10 → 10³–10⁴), which fits the range and makes rank the cost axis.
 
