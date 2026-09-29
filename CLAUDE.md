@@ -304,16 +304,18 @@ Both checkpoints reproduce, which is the clean branch of the registered 2x2. The
 
 **A residual puzzle, to state rather than smooth over.** PaPaGei-S is morphology-sensitive, it is sign-sensitive as its training recipe predicts, and yet it prefers the wrist signal in the orientation it arrives in rather than the orientation its pre-training corpus was in. Those three do not sit together comfortably. Either the pre-training corpus orientation needs re-checking, or sensitivity to sign does not imply a preference for the orientation seen during pre-training. Report it as an open question.
 
-**The population model saturates at about six subjects** (`python -m src.population_curve`, figure `gate4_population_curve.png`). Mean per-subject MAE by number of population subjects, leave-one-subject-out, three random draws per size:
+**Population size: returns diminish, but the earlier "saturates at six" claim was wrong** (`python -m src.population_curve`, 25 draws per size, figure `gate4_population_curve.png`). Mean per-subject MAE, PaPaGei-P:
 
 | Subjects | 2 | 4 | 6 | 8 | 10 | 12 | 14 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| PaPaGei-P | 14.39 | 13.23 | 11.89 | 12.21 | 11.96 | 11.72 | 11.70 |
-| PaPaGei-S | 15.34 | 14.45 | 13.08 | 13.51 | 13.26 | 13.01 | 13.04 |
+| MAE | 15.11 | 12.94 | 12.31 | 12.00 | 11.86 | 11.76 | 11.70 |
+| Change | | -2.18 | -0.63 | -0.31 | -0.13 | -0.11 | -0.06 |
 
-Going from six subjects to fourteen, more than doubling the population, buys **0.19 BPM** on P and **0.04** on S. The bump at eight is sampling noise across the three draws. Meanwhile the worst subject sits at 24.46 against a mean of 11.70.
+The paired per-subject comparison of six against fourteen is **+0.604 BPM, 95 per cent interval [0.470, 0.769], worse with six on 15 of 15 subjects**. The earlier figure of 0.19 BPM came from three draws per size and was noise. Twelve to fourteen buys 0.055, so returns do flatten, but nearer **ten to twelve subjects than six**.
 
-So what remains after six subjects is not a shortage of population data. It is individual variation, which is exactly what per-person adaptation exists to address. This is a direct argument for the study's premise, and it came out of work already done. It belongs in the midterm.
+This weakens the premise argument without removing it. Going from six subjects to fourteen buys 0.60 BPM, against a per-subject spread running from 7.1 to 23.8. Population size still matters far less than which person you are, but "more population data does not help" is too strong and should not be written.
+
+Note on the figure: sizes below fourteen average 25 draws across 15 subjects, while fourteen is deterministic with one value per subject, so its error bar is not comparable to the others. The paired test is the number to quote.
 
 **Sub Question 2, stress-tested** (`python -m src.difficulty_checks`). Per-subject error under the unadapted population model runs from 7.14 BPM on S7 to 24.46 on S5, a factor of 2.5. Distance of a subject's median heart rate from the population median predicts it, but state the strength carefully: r = 0.87 across all fifteen with a bootstrap interval of [0.52, 0.97], r = 0.89 without S6, and **r = 0.63 explaining 40 per cent** among the thirteen once both extremes are removed. Five predictors were tested on fifteen points. The relationship is real and it survives leverage, but the two outliers make it look stronger than it is.
 
