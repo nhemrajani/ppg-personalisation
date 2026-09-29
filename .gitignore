@@ -12,6 +12,7 @@ results/embeddings/*
 weights/
 *.pkl
 *.npz
+*.npy
 *.pt
 
 # Local
