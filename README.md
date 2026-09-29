@@ -193,9 +193,10 @@ for each subject. Further, this dataset is also the benchmark on which PaPaGei's
 published heart-rate result was obtained. I also identified a secondary dataset,
 PulseDB, to further check external validity.
 
-Model weights. PaPaGei checkpoints are released under an open licence and are at
-roughly five million parameters each. I use the model's preprocessing and inference
-code unmodified.
+Model weights. PaPaGei checkpoints are publicly downloadable from Zenodo and are at
+roughly five million parameters each. Their code is released under a BSD 3-Clause
+licence; the Zenodo record holding the weights states no licence at all. I use the
+model's preprocessing and inference code unmodified.
 
 Computation. The model encoder is frozen in five of the six experimental arms, which
 means extracting the 512-dimensional embeddings for all 64k+ windows in PPG-DaLiA

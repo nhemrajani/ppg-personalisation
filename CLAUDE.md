@@ -241,6 +241,14 @@ Also: synthetic sine wave check. Generate 1.2 Hz at 64 Hz for 30s, filter, detec
 ### Gate 4 — Arm A reproduces
 Ridge on frozen embeddings, PaPaGei's evaluation protocol, bootstrap intervals. Compare to 11.53 / 10.92.
 
+**Reported figures, with their intervals:** PaPaGei-S **11.53 [11.40-11.66]**, PaPaGei-P **10.92 [10.80-11.04]** on PPG-DaLiA heart rate.
+
+Those intervals are 500-resample bootstraps over **windows**, not subjects. With three test subjects a subject-level interval would be far wider, so their published interval understates the uncertainty that matters. Our 455-triple distribution measures a different and more honest quantity, and the gap between the two is worth a sentence in the paper.
+
+No seed averaging to account for: the "conducted five times" in their appendix refers to the bootstrap ranking procedure behind Figure 24, not to repeated training runs. The 11.53 is one split.
+
+**The 60/20/20 ratio is confirmed for PPG-DaLiA** (2026-09-28). Their section 4.4 reads: "Initially, we split the in-domain and out-of-domain datasets into training, validation, and test sets at 80/10/10 and 60/20/20 ratios. The splitting is performed at the subject level ensuring no overlap between individuals across the sets." The pairing is by word order rather than an explicit "respectively", so a second argument settles it: PPG-DaLiA is greyed in Table 2 as out-of-domain, and 80/10/10 on fifteen subjects gives 12/1.5/1.5, which does not divide. 60/20/20 gives 9/3/3.
+
 **Open issue: 11.53 is not a leave-one-subject-out number** (verified 2026-09-22). The paper's linear evaluation uses a single fixed subject-level train/val/test split: 80/10/10 for in-domain datasets, **60/20/20 for out-of-domain**. PPG-DaLiA is out-of-domain (unseen in pretraining), so roughly 9/3/3 subjects. PaPaGei's feature-extraction job chunking is consistent with about 3 test subjects. So 11.53 is an MAE over ~3 held-out people, with 500-run bootstrap intervals.
 
 Consequences:
@@ -256,7 +264,9 @@ Two things the checks caught, both real:
 - **Activity runs need a buffer at their boundaries, not only at the internal cut.** Activities alternate with transient periods, and a window straddles the join, so the last test window of one run overlapped the first adaptation window of the next. Splits are now built as labelled time regions with the buffer enforced at every boundary between differently labelled regions.
 - **The ordering invariant is per run, not per activity code.** Transient recurs throughout the recording, so an early run's test block legitimately precedes a later run's adaptation block. The first version of the check asserted the wrong thing.
 
-Cost of the stratified protocol: roughly 220 windows per subject go to buffers, about 5 per cent, because each of the roughly fifty activity runs needs its own. The naive temporal protocol spends 7. Adaptation and test come out near equal at about 2,030 and 2,070 windows.
+Cost of the stratified protocol: roughly 220 windows per subject go to buffers, about 5 per cent, because each of the sixteen activity runs needs its own. The naive temporal protocol spends 7. Adaptation and test come out near equal at about 2,030 and 2,070 windows.
+
+**Two decisions the splitter makes, now stated rather than implied.** Subjects are stratified over whichever activity runs they actually have, with no special casing: S6's recording stops after about 1.5 hours, so it has no lunch, walking or working and gets 11 runs against 16 for everyone else. And transient periods are runs like any other label rather than being discarded, which matters because they are 26.1 per cent of adaptation windows on average and 43.2 per cent for S6. Both belong in the methodology's section on splitting.
 
 Every subject reaches the full budget sweep. S6 is the binding case at 40.8 usable adaptation minutes against the 40-minute budget, a margin of 48 seconds, so any increase to the largest budget or the buffer would exclude it.
 
