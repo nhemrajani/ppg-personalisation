@@ -220,15 +220,15 @@ The Python constraint came from preprocessing dependencies, not PyTorch. `pyPPG=
 Open check: filter output under scipy 1.18 vs pyPPG's pinned scipy 1.9.1. Both use `cheby2` + `filtfilt`, expected to agree to floating-point precision, but unverified.
 
 ### Gate 2 — Real data through the pipeline
-**Status: in progress.** Data is on the machine but not yet extracted into `data/`.
+**Status: passed 2026-09-28.** Synthetic 1.2 Hz check returns exactly 36 peaks. Window counts equal the dataset's label counts for all fifteen subjects. Rejection is zero everywhere, for reasons recorded above.
 Load one subject. Plot 30s raw. Apply PaPaGei preprocessing. Plot filtered vs raw. Detect peaks, count by eye, compare to ECG label. Then one real window → 512 numbers.
 
 Also: synthetic sine wave check. Generate 1.2 Hz at 64 Hz for 30s, filter, detect peaks, confirm 36. Pipeline verified on data where the answer is known.
 
 ### Gate 3 — Embeddings cached
-All 15 subjects, both checkpoints, saved to disk with subject ID and HR label attached. ~64,697 rows × 512 columns, twice.
+**Status: passed 2026-09-28.** `python -m src.embed`, 76 seconds on MPS. Four tables of 64,697 × 512, both checkpoints in both polarities, 132 MB each, in `results/embeddings/` (not committed; `environment.json` is). Verified: all finite, index aligned to heart rate, re-embedding reproduces cached values to 1.3e-06, and the flipped tables differ from as-is.
 
-Record environment: package versions, hardware, runtime.
+**Spike audit** (`python -m src.spike_audit`, `results/spike_audit.csv`). Per-window z-scoring takes its scale from the window's standard deviation, so a single artefact can compress the real pulse. Measured as the largest deviation from the median in interquartile ranges: median 2.3, 95th percentile 6.0, max 67. Beyond 20 IQR there are **71 windows, 0.11%**; beyond 10 IQR, 719 windows, 1.11%. In those 71, the interquartile pulse occupies a median 2.6% of the window range against 24.7% elsewhere, so the mechanism is real but rare. Note it; at this scale it does not need a robustness check, though dropping the 719 and re-running the frontier is minutes of work once the frontier exists.
 
 **This is the gateway. Everything after is arithmetic on a table.**
 

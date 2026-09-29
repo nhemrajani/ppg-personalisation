@@ -1,0 +1,117 @@
+{
+  "device": "mps",
+  "python": "3.12.14",
+  "torch": "2.14.0",
+  "numpy": "2.5.3",
+  "machine": "arm64",
+  "runtime_seconds": 75.8,
+  "batch_size": 256,
+  "subjects": [
+    {
+      "subject": "S1",
+      "windows": 4603,
+      "rejection_rate": 0.0,
+      "usable_minutes": 153.43333333333334,
+      "elapsed_minutes": 153.43333333333334
+    },
+    {
+      "subject": "S2",
+      "windows": 4099,
+      "rejection_rate": 0.0,
+      "usable_minutes": 136.63333333333333,
+      "elapsed_minutes": 136.63333333333333
+    },
+    {
+      "subject": "S3",
+      "windows": 4367,
+      "rejection_rate": 0.0,
+      "usable_minutes": 145.56666666666666,
+      "elapsed_minutes": 145.56666666666666
+    },
+    {
+      "subject": "S4",
+      "windows": 4572,
+      "rejection_rate": 0.0,
+      "usable_minutes": 152.4,
+      "elapsed_minutes": 152.4
+    },
+    {
+      "subject": "S5",
+      "windows": 4649,
+      "rejection_rate": 0.0,
+      "usable_minutes": 154.96666666666667,
+      "elapsed_minutes": 154.96666666666667
+    },
+    {
+      "subject": "S6",
+      "windows": 2622,
+      "rejection_rate": 0.0,
+      "usable_minutes": 87.4,
+      "elapsed_minutes": 87.4
+    },
+    {
+      "subject": "S7",
+      "windows": 4668,
+      "rejection_rate": 0.0,
+      "usable_minutes": 155.6,
+      "elapsed_minutes": 155.6
+    },
+    {
+      "subject": "S8",
+      "windows": 4037,
+      "rejection_rate": 0.0,
+      "usable_minutes": 134.56666666666666,
+      "elapsed_minutes": 134.56666666666666
+    },
+    {
+      "subject": "S9",
+      "windows": 4277,
+      "rejection_rate": 0.0,
+      "usable_minutes": 142.56666666666666,
+      "elapsed_minutes": 142.56666666666666
+    },
+    {
+      "subject": "S10",
+      "windows": 5321,
+      "rejection_rate": 0.0,
+      "usable_minutes": 177.36666666666667,
+      "elapsed_minutes": 177.36666666666667
+    },
+    {
+      "subject": "S11",
+      "windows": 4521,
+      "rejection_rate": 0.0,
+      "usable_minutes": 150.7,
+      "elapsed_minutes": 150.7
+    },
+    {
+      "subject": "S12",
+      "windows": 3954,
+      "rejection_rate": 0.0,
+      "usable_minutes": 131.8,
+      "elapsed_minutes": 131.8
+    },
+    {
+      "subject": "S13",
+      "windows": 4565,
+      "rejection_rate": 0.0,
+      "usable_minutes": 152.16666666666666,
+      "elapsed_minutes": 152.16666666666666
+    },
+    {
+      "subject": "S14",
+      "windows": 4476,
+      "rejection_rate": 0.0,
+      "usable_minutes": 149.2,
+      "elapsed_minutes": 149.2
+    },
+    {
+      "subject": "S15",
+      "windows": 3966,
+      "rejection_rate": 0.0,
+      "usable_minutes": 132.2,
+      "elapsed_minutes": 132.2
+    }
+  ],
+  "note": "asis is PaPaGei's pipeline unmodified; flipped negates the window to test the E4 BVP polarity inversion, and is an extension only."
+}

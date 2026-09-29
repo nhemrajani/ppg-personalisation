@@ -16,7 +16,9 @@ paper, public repository and presentation on 17 December.
 | Environment, PaPaGei pinned, both checkpoints loading | Done, 22 September |
 | Window length settled at 8 seconds against the dataset itself | Done, 28 September |
 | Proposal, methodology and bibliography in the repository | Done, 28 September |
-| PPG-DaLiA extracted and preprocessed | Not started |
+| PPG-DaLiA extracted and preprocessed | Done, 28 September |
+| Stage 1 checks, including why nothing is rejected | Done, 28 September |
+| Stage 2 embeddings, both checkpoints and both polarities | Done, 28 September |
 
 Two things are already known that shorten the work. The encoder runs on the Mac's
 GPU, which matters for Arm D. And every subject has between 87.5 and 177.5 minutes of

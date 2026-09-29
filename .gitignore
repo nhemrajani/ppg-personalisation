@@ -7,7 +7,8 @@ __pycache__/
 # Data and large artefacts: never committed
 data/*
 !data/.gitkeep
-results/embeddings/
+results/embeddings/*
+!results/embeddings/environment.json
 weights/
 *.pkl
 *.npz
