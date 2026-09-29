@@ -40,7 +40,8 @@ def main() -> None:
     width = 0.35
     for offset, backbone, colour in ((-width/2, "p", "#4a6fa5"), (width/2, "s", "#7b4b2a")):
         by = {p: np.array([float(r["mae"]) for r in rows
-                           if r["arm"] == "A" and r["backbone"] == backbone and r["polarity"] == p])
+                           if r["arm"] == "A" and r["backbone"] == backbone and r["polarity"] == p
+                           and r["protocol"] == "leave-one-subject-out"])
               for p in ("asis", "flipped")}
         subjects = np.arange(len(by["asis"]))
         delta = by["flipped"] - by["asis"]
