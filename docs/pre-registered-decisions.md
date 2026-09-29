@@ -127,3 +127,38 @@ test triples; "misses" means it falls outside.
 **Polarity is not a candidate explanation for a reproduction miss** in any branch.
 PaPaGei obtained 11.53 on the same inverted wrist data we have, so the inversion
 affects them and us equally. Polarity is tested at Arm A, not here.
+
+## Arm B's effect on the poorly-served subjects, registered 29 September 2026
+
+Registered before Arm B is implemented or run.
+
+Under the unadapted population model, error is dominated by systematic bias for the
+subjects furthest from the population centre: S5 shows a bias of -22.6 BPM within a
+24.5 BPM error, 92 per cent of it, and S6 -14.3 of 17.2. Low heart-rate subjects are
+over-predicted and high ones under-predicted, which is what ridge shrinkage toward
+the training mean produces.
+
+Arm B is a per-person affine correction, a scale and an offset, which is the textbook
+fix for exactly that kind of offset. So:
+
+1. **Arm B should help S5 and S6 far more than it helps the other thirteen.**
+2. **The improvement should track the bias**, and therefore the distance measure,
+   across subjects.
+3. **If the improvement does not track bias, the mechanism is not shrinkage** and the
+   correlation between distance and error needs another explanation.
+
+This is falsifiable and the result does not yet exist. If it holds, it also means the
+distance measure is a triage signal for who needs personalisation at all, and the
+label-free version, using the population model's own median prediction on the
+subject's unlabelled windows, correlates nearly as well at r = 0.85 across fifteen
+subjects, which connects it directly to Arm B2's weighting.
+
+## Limits of the sample on skin tone, recorded 29 September 2026
+
+PPG-DaLiA's fifteen subjects span Fitzpatrick skin types 2 to 4, with eleven of them
+at type 3. Types 5 and 6 are absent entirely. The study therefore cannot speak to the
+question of whether personalisation helps across skin tone, not because fifteen
+subjects is a small sample but because the range does not exist in the data. This is
+stated here so that it appears in the limitations as a hard constraint rather than a
+hedge, and it is the concrete reason the study measures the distribution of
+performance rather than making demographic claims.

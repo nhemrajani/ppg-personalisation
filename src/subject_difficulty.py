@@ -85,15 +85,36 @@ def main() -> None:
 Per-subject error under the unadapted population model varies by a factor of
 {mae[order[:3]].mean() / mae[order[-3:]].mean():.1f}: worst {worst}, best {best}.
 
-That variation is structured rather than random. How far a subject's median heart rate
-sits from the population median predicts their error with r = {r_value:.2f}, explaining
-{r_value**2:.0%} of the variance across the fifteen subjects. Signal quality is a much weaker
-predictor (r = {pearsonr(np.array([float(r['median_sqi']) for r in rows]), mae)[0]:+.2f}), and
-age, recording duration and heart-rate spread show no relationship at all.
+How far a subject's median heart rate sits from the population median predicts that
+error, but the strength depends heavily on two subjects and the claim needs stating
+carefully. Across all fifteen, r = 0.87 with a bootstrap interval of [0.52, 0.97].
+Removing S6 leaves r = 0.89. Removing both S5 and S6, the two extremes, leaves
+r = 0.63, p = 0.02, explaining 40 per cent of the variance among the remaining
+thirteen. The honest summary is that the relationship holds across the sample but
+that the two outlying subjects make it look stronger than it is, and that five
+predictors were tested on fifteen points.
 
-The two worst-served subjects, S5 and S6, have median heart rates of 122 and 121 BPM
-against 72 to 88 for the other thirteen. Their signal is not unusually noisy. They are
-simply unlike the population the model was fitted on.
+A label-free version performs as well. Replacing the subject's true median heart rate
+with the population model's own median prediction on that subject's unlabelled
+windows gives r = 0.85 across all fifteen and r = 0.62 among the thirteen. That
+version needs no ground truth from the subject, so it could triage a new member
+before any labelled data exists.
+
+The mechanism is largely regression to the mean rather than physiology. Ridge shrinks
+predictions toward the training mean, so a subject far from the centre is pulled
+toward it, and the resulting systematic offset appears as error. Decomposing each
+subject's error confirms it: for S5 the bias is -22.6 BPM of a 24.5 BPM error, 92 per
+cent, with predictions consistently too low; for S6, -14.3 of 17.2, 83 per cent. The
+well-served subjects have near-zero bias, 2 to 21 per cent. Low heart-rate subjects
+are over-predicted and high ones under-predicted, which is what shrinkage looks like.
+
+S6 deserves a separate note, because its elevated heart rate could be an artefact of
+the truncated recording: the missing hour contains lunch, walking and working, whose
+median heart rates across the other subjects are 80, 96 and 74. Restricting every
+subject to the activities S6 does have, the other fourteen have a median of 88 against
+S6's 121. So truncation accounts for about 4 BPM of S6's 37 BPM distance from the
+population, and the remaining 33 is the subject. S6 is genuinely a high heart-rate
+individual rather than a collection artefact.
 """
     appendix.write_text(text)
     print(f"appended a section to {appendix}")
