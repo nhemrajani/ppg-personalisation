@@ -106,6 +106,12 @@ Counting PPG-DaLiA's own heart-rate labels confirms it. The label total across t
 
 Useful by-product, recorded in the same file: per-subject durations run from 87.5 minutes (S6) to 177.5 minutes (S10). Even the shortest subject supports the 40-minute budget with room for buffer and test block, which closes the "is there enough data per subject" risk flagged for Week 4.
 
+**Flatline rejection is inert on this dataset (measured 2026-09-28).** Across all 64,697 windows the flatness fraction is exactly 0.0000%, at minimum flatline durations of 0.5, 1, 2 and 4 s, on raw and filtered signal alike. The cause is a scale mismatch, not clean data: biobss compares consecutive-sample changes against an absolute threshold of 0.01, while the median step in E4 BVP is 4.84 units and the 1st percentile is 0.70. No sample pair in the dataset falls below the threshold. PaPaGei's `is_signal_flat_lined` z-scores the signal and then passes the un-normalised array, which looks unintended; on z-scored input 3 windows would be rejected. Keep their behaviour for fidelity, since it is what produces their 64,697. Run `python -m src.measure_quality`.
+
+**The E4 BVP channel is inverted relative to standard PPG.** Each ECG R-peak is followed by a sharp downward trough, with the dicrotic notch as a secondary bump (`figures/gate2_polarity.png`). Consequences: PaPaGei's SQI is skewness, where higher means cleaner on conventional PPG, so its sign is flipped here and clean sitting windows score most negative. Any quality measure on this dataset needs negated skewness. Open question for Gate 4, and a cheap experiment: PaPaGei pretrained on conventional-polarity finger PPG, so the encoder may be seeing upside-down pulses, which could contribute to its mid-table showing on this benchmark. Reproduce Arm A with the signal as-is and with polarity flipped, and report which matches 11.53. Do not flip anything before the reproduction is anchored.
+
+**The real failure mode is spikes, not flatlines.** The twenty lowest-quality windows (`figures/gate2_worst_windows.png`) are dominated by single-sample excursions reaching -2000 against a pulse amplitude of tens, mostly during driving, lunch and working.
+
 **Record the rejection rate per subject.** It varies, and it feeds the "usable minutes vs wear time" analysis.
 
 **PPG-DaLiA loading gotcha:** files are pickled Python 2 objects. Use `encoding='latin1'` or it fails with what looks like corruption.
