@@ -250,6 +250,16 @@ Consequences:
 
 If it doesn't match: debug against their published intermediate values. If it still doesn't, document the discrepancy carefully. A documented failed reproduction is a legitimate result.
 
+**Splitting implemented and self-checking (2026-09-28).** `python -m src.splits` asserts every invariant for both protocols and all fifteen subjects: the target never appears in its own population set, no row sits in two blocks, no adaptation window shares a sample with any test window, test follows adaptation, and budgets nest.
+
+Two things the checks caught, both real:
+- **Activity runs need a buffer at their boundaries, not only at the internal cut.** Activities alternate with transient periods, and a window straddles the join, so the last test window of one run overlapped the first adaptation window of the next. Splits are now built as labelled time regions with the buffer enforced at every boundary between differently labelled regions.
+- **The ordering invariant is per run, not per activity code.** Transient recurs throughout the recording, so an early run's test block legitimately precedes a later run's adaptation block. The first version of the check asserted the wrong thing.
+
+Cost of the stratified protocol: roughly 220 windows per subject go to buffers, about 5 per cent, because each of the roughly fifty activity runs needs its own. The naive temporal protocol spends 7. Adaptation and test come out near equal at about 2,030 and 2,070 windows.
+
+Every subject reaches the full budget sweep. S6 is the binding case at 40.8 usable adaptation minutes against the 40-minute budget, a margin of 48 seconds, so any increase to the largest budget or the buffer would exclude it.
+
 ### Gate 5 — Experiment harness
 **Build before the arms multiply, not after.**
 
