@@ -38,8 +38,8 @@ trade-off in unlocking personalised mass-market healthcare and wellness. Using
 PaPaGei, an open PPG foundation model from Nokia Bell Labs, and PPG-DaLiA, a public
 dataset of fifteen subjects, I compare six different methods of per-person adaptation
 for continuous heart-rate estimation from zero to approximately five million
-trainable parameters per person: an unadapted population model, feature
-normalisation, unlabelled similarity weighting of population subjects, a warm-started
+trainable parameters per person: an unadapted population model, a per-person affine
+correction, unlabelled similarity weighting of population subjects, a warm-started
 per-person output layer, parameter-efficient fine-tuning, and full fine-tuning. Each
 method is evaluated under one leakage-controlled protocol that divides each target
 subject's recording into an adaptation block, a discarded buffer and a later test
@@ -80,9 +80,9 @@ whether adapting these models beats normalisation, a method already running on
 millions of wrists. To measure against a raw population model would be to overstate
 the accuracy gained by whatever amount normalisation alone already delivers.
 
-Normalisation alone is not an easy baseline to replicate, because the window used to
-compute a user's baseline statistics overlaps in time with the data used to evaluate
-them, and often this results in inflated performance. This is a real constraint when
+Normalisation alone is not an easy baseline to construct, because where the window
+used to compute a user's baseline statistics overlaps in time with the data used to
+evaluate them, performance is inflated. This is a real constraint when
 comparing normalisation to other methods: constructing normalisation with temporal
 overlap will flatter the baseline, and every method measured against it would be
 unfairly penalised. This is accounted for in this study.
@@ -91,7 +91,7 @@ The problem statement this study aims to address is thus as follows: there is
 currently a lack in understanding of what per-person adaptation of a PPG foundation
 model costs relative to what it delivers, measured against current methods of
 personalisation already deployed. Without a common axis, existing results cannot be
-compared, and without the right baseline, most research lacks credibility. In this
+compared, and without the right baseline, the comparison cannot be verified. In this
 study, I aim to provide both by running every adaptation method on one backbone, one
 task, and one dataset so the resulting numbers can be compared in terms of cost
 versus accuracy gained.
@@ -186,8 +186,8 @@ The resources used in this study are all open-source and easily accessible.
 
 Data. I use the PPG-DaLiA dataset, a publicly accessible dataset from the UCI Machine
 Learning Repository, which includes fifteen subjects recorded with a wrist-worn
-Empatica E4 and a chest RespiBAN ECG device across eight everyday activities,
-resulting in over 64,000 analysis windows. This dataset is freely downloadable and
+Empatica E4 and a chest RespiBAN ECG device across eight everyday activities plus the
+transitions between them, resulting in 64,697 analysis windows. This dataset is freely downloadable and
 also records Fitzpatrick skin type, height, weight and self-reported fitness levels
 for each subject. Further, this dataset is also the benchmark on which PaPaGei's
 published heart-rate result was obtained. I also identified a secondary dataset,

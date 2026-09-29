@@ -15,6 +15,9 @@ weights/
 *.npy
 *.pt
 
+# Research log: kept private, published via the hosted log instead
+log/*.md
+
 # Local
 .env
 .DS_Store
