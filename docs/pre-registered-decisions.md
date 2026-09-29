@@ -274,3 +274,29 @@ Arms C2 and D run under the **activity-stratified protocol only**, with a
 the two protocols as a genuine comparison, so this asymmetry is recorded here rather
 than discovered later. The reason is compute: C2 and D train, and running both
 protocols would roughly double an already overnight job.
+
+## A second budget definition, registered 29 September 2026
+
+Registered after seeing the temporal-prefix budget curve but before running the
+alternative, and recorded as such rather than presented as the original plan.
+
+The registered budget is a **prefix in time**: the first n minutes of the adaptation
+block. Under the activity-stratified protocol those minutes are whatever the subject
+did first, which in PPG-DaLiA is sitting still. For S5 the five-minute budget averages
+94.7 BPM against a test block at 125.5. Every adaptive arm is therefore worse than no
+adaptation at small budgets, and five minutes is worse than two because it is more
+purely sedentary.
+
+That is a real deployment finding and the temporal prefix stays as the primary
+definition, because it answers the question a device actually faces: what happens when
+calibration data is whatever the user did first.
+
+A **second definition is added as a clearly labelled variant**: sample the budget
+proportionally across the activity runs within the adaptation block, preserving
+nesting so that smaller budgets remain prefixes within each run. This holds
+composition roughly constant and so answers the question Sub Question 1 actually asks,
+which is how much data is needed rather than which data happens to arrive first.
+
+**The gap between the two curves is the cost of unrepresentative calibration**, and it
+is a better result than either curve alone. Neither replaces the other and both are
+reported.
