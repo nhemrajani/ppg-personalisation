@@ -2,6 +2,8 @@
 
 Project context for Claude Code. Read this before writing any code.
 
+The authoritative method is `docs/methodology.md`, written by the author and transcribed from the proposal. This file is the working summary plus everything verified against PaPaGei's code, paper and weights. Where they disagree, the methodology document wins on design and this file wins on verified facts.
+
 > Disclaimer: work in progress, drafted with Claude Code. Provisional and subject to revision until updated with all the relevant information.
 
 ---
@@ -132,7 +134,7 @@ This is the hardest part of the design. Get it wrong and every number is invalid
 | Arm | Description | Cost per person |
 |---|---|---|
 | A | Frozen encoder, ridge on population set, applied unchanged | 0 |
-| B | As A, features rescaled using target's adaptation-block statistics | 2 values |
+| B | As A, with a per-person affine correction (scale and offset) fitted on the target's adaptation block and applied to the predictions | 2 values, 8 bytes |
 | B2 | As A, population subjects weighted by embedding similarity to target (unlabelled) | 0 |
 | C1 | Frozen encoder, ridge warm-started from population solution, updated toward individual | 513 |
 | C2 | Frozen encoder + small trainable components, trained on adaptation block | 10³–10⁴ |
@@ -198,7 +200,7 @@ The Python constraint came from preprocessing dependencies, not PyTorch. `pyPPG=
 Open check: filter output under scipy 1.18 vs pyPPG's pinned scipy 1.9.1. Both use `cheby2` + `filtfilt`, expected to agree to floating-point precision, but unverified.
 
 ### Gate 2 — Real data through the pipeline
-**Status: next.**
+**Status: in progress.** Data is on the machine but not yet extracted into `data/`.
 Load one subject. Plot 30s raw. Apply PaPaGei preprocessing. Plot filtered vs raw. Detect peaks, count by eye, compare to ECG label. Then one real window → 512 numbers.
 
 Also: synthetic sine wave check. Generate 1.2 Hz at 64 Hz for 30s, filter, detect peaks, confirm 36. Pipeline verified on data where the answer is known.
@@ -229,10 +231,12 @@ One function: configuration in, result row out, every setting recorded.
 
 ```
 config = {arm, backbone, subject, budget_minutes, split_type, seed, hyperparams}
-→ run → append row to results/experiments.csv with config + metrics + timestamp
+→ run → append row to results/experiments.csv recording config + metrics
+        + parameter and byte counts + usable and elapsed minutes
+        + timestamp + commit hash of the code that produced it
 ```
 
-6 arms × 6 budgets × 15 subjects × 2 backbones ≈ 1,000 runs. Computationally trivial, impossible to track by hand.
+6 arms × 6 budgets × 15 subjects × 2 backbones × 2 split protocols, plus the C2 rank sweep and the C1 from-scratch variant, is **on the order of 3,000 runs**. Computationally trivial, impossible to track by hand.
 
 ### Gate 6 — Arms B, B2, C1
 Splitting protocol implemented. Three arms with confidence intervals. First real comparison.
