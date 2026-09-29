@@ -65,7 +65,16 @@ negative mean squared error, with MAE reported. Their cross-validation is not gr
 by subject; the reproduction keeps that rather than correcting it.
 
 The grid and rules registered above continue to govern **our own arms**, A through D,
-where there is no obligation to match anyone.
+where there is no obligation to match anyone. Our arms also standardise the embedding
+features, with the scaler fitted on the population set alone and applied unchanged to
+the target's blocks, for the same reason their pipeline does it.
+
+**Where each experiment runs.** The 455-triple reproduction runs on unflipped signal
+only, because that is their protocol and doubling it would blur what the reproduction
+means. Polarity is tested at Arm A instead: leave-one-subject-out over all fifteen
+subjects, both checkpoints, flipped and unflipped, sixty runs. That gives a paired
+comparison across every subject, which is a stronger design for the polarity question
+than comparing two distributions, and it is the form Sub Question 3 needs.
 
 **Applies to every arm that fits a ridge**, which is A, B and B2 directly, and C1 as
 its warm start. Arm C1's shrinkage strength and Arm C2's rank are separate ranges and
@@ -101,7 +110,20 @@ task. For PaPaGei-S that is explicitly not one model across tasks, which means t
 `papagei_s.pt` released on Zenodo. PaPaGei-P is the cleaner target, since one model is
 stated to be best on everything.
 
-Registered in advance so that the interpretation of a miss is fixed before the result
-exists: if the reproduction lands outside the 455-triple distribution on S but inside
-on P, model selection across pre-training runs is a live explanation alongside a
-pipeline error, and the two are not distinguishable with the released artefacts.
+**The two explanations separate after all, because P is a control for S.** The
+pipeline is shared: same preprocessing, embeddings, standardisation, ridge, split
+rule and grid. Nothing in it is S-specific. So PaPaGei-P is the primary reproduction
+gate and PaPaGei-S the secondary, and the reading is registered here before either
+runs:
+
+| | P reproduces | P misses |
+| --- | --- | --- |
+| **S reproduces** | Everything is fine. | Not expected. Would point at something P-specific, and there is nothing in our pipeline that qualifies, so it would mean looking again. |
+| **S misses** | The pipeline is exonerated by P. Model selection across pre-training runs stands as the explanation for S. | Pipeline bug. The shared machinery is the only thing that could fail for both. |
+
+"Reproduces" means the published figure falls inside our distribution over the 455
+test triples; "misses" means it falls outside.
+
+**Polarity is not a candidate explanation for a reproduction miss** in any branch.
+PaPaGei obtained 11.53 on the same inverted wrist data we have, so the inversion
+affects them and us equally. Polarity is tested at Arm A, not here.
