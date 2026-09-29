@@ -124,6 +124,8 @@ Consequences: PaPaGei's SQI is skewness, where higher means cleaner on conventio
 
 Undocumented parameters and their effects: `docs/undocumented-parameters.md`.
 
+Citations and claims checked against the primary sources: `docs/source-verification.md`. Four citations are wrong, two claims need qualifying, and Bent et al. 2020 is the strongest unused evidence in the bibliography: full Fitzpatrick range, the same Empatica E4, no significant skin-tone effect on heart-rate accuracy, but 30 per cent higher error during activity than at rest.
+
 **Read the worst-windows figure carefully.** `figures/gate2_worst_windows.png` ranks by skewness, which on this dataset ranks by largest single-sample artefact rather than by least usable pulse content. Several of those windows carry clean signal throughout, S9 w2950 and S9 w4056 among them. Nothing in them is dropout: the apparently flat stretches are ordinary pulse of amplitude around 20 crushed by an axis scaled to a spike of 2000. Describe it that way.
 
 **Padding verified against a real window (2026-09-28).** A prepared window is 1,250 samples: 125 leading zeros, a 1,000-sample body which is exactly 8 s at 125 Hz, and 125 trailing zeros. Padding is 20 per cent of every input. It happens after z-scoring, as the paper's step order implies and their example notebook does, so the zeros sit at the body's mean rather than shifting it: body mean -0.0001 and standard deviation 1.0004. The padded window's standard deviation is 0.895, diluted by the zeros but not displaced. Padding before z-scoring would have put the zeros at an offset from the mean and changed every window's statistics.
