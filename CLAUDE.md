@@ -288,6 +288,18 @@ Cost of the stratified protocol: roughly 220 windows per subject go to buffers, 
 
 Every subject reaches the full budget sweep. S6 is the binding case at 40.8 usable adaptation minutes against the 40-minute budget, a margin of 48 seconds, so any increase to the largest budget or the buffer would exclude it.
 
+**Status: passed 2026-09-29.** `python -m src.stage4`, 971 rows in `results/experiments.csv`, figure `figures/gate4_reproduction.png`.
+
+Both checkpoints reproduce, which is the clean branch of the registered 2x2. The published figure falls inside our 455-triple distribution for each: PaPaGei-P 10.92 at the 32nd percentile of a distribution with median 11.78, PaPaGei-S 11.53 at the 28th percentile of a median 12.77. Our medians sit about 1 BPM above the published values on both, consistently, which is what selecting a favourable split and the best of five pre-training runs would look like.
+
+**The headline methodological result.** Our central 90 per cent spans **7.73 BPM** for P and 7.68 for S; their published 95 per cent intervals span **0.24** and 0.26. A factor of **32 and 30**. Their interval bootstraps windows within one fixed choice of three test subjects; ours varies which three subjects those are. On a fifteen-subject benchmark the second is the uncertainty that matters, and it is thirty times the first. This is the sentence that supports Sub Question 2's argument for reporting distributions.
+
+**Arm A, leave-one-subject-out, mean per-subject MAE:** P as-is 11.70, P flipped 11.64, S as-is 13.04, S flipped 13.82.
+
+**The polarity control did its job, and the hypothesis did not survive it.** The sign-invariance asymmetry is confirmed exactly as the training recipe predicts: flipping moves PaPaGei-P by +0.06 BPM, which is nothing, and moves PaPaGei-S by 0.79 BPM. P is sign-invariant, S is not. But the direction is the opposite of the inversion hypothesis. Flipping to restore conventional polarity makes S **worse**, better on only 3 of 15 subjects, so S prefers the wrist signal as it comes. Restoring convention does not recover accuracy, and the inversion does not explain PaPaGei's mid-table showing on this benchmark. Report it as a negative result; the morphological evidence for the inversion still stands, it simply does not have the consequence predicted.
+
+**Sub Question 3 is not confounded by sign invariance.** P beats S on 14 of 15 subjects in both polarities, by 1.34 BPM as-is and 2.18 flipped. The ordering survives the control, so whatever separates the two objectives on this dataset is not their treatment of sign.
+
 ### Gate 5 — Experiment harness
 **Build before the arms multiply, not after.**
 

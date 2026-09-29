@@ -21,6 +21,7 @@ paper, public repository and presentation on 17 December.
 | Stage 2 embeddings, both checkpoints and both polarities | Done, 28 September |
 | Arm C2 feasibility spike, the project's one real technical risk | Done, 28 September |
 | Stage 3 splitting protocol, with its invariants asserted | Done, 28 September |
+| Stage 4 reproduction and Arm A, with the polarity control | Done, 29 September |
 
 Two things are already known that shorten the work. The encoder runs on the Mac's
 GPU, which matters for Arm D. And every subject has between 87.5 and 177.5 minutes of
