@@ -132,6 +132,12 @@ Undocumented parameters and their effects: `docs/undocumented-parameters.md`.
 
 Their bootstrap resamples rows of the test set, confirmed in `bootstrap_metric_confidence_interval`, which is windows rather than subjects.
 
+Their `cv=4` leaks by our standards: plain k-fold over pooled windows from nine subjects, so one subject's windows fall in both the fitting and validating folds, and consecutive windows overlap by six seconds. Match it for the reproduction, since fidelity is the point, and note it beside the other pipeline findings. Arm A uses `GroupKFold` grouped by subject instead, and the contrast is worth a sentence.
+
+**The published figures are the best of five pre-training runs, selected per downstream task** (their section 4.1). For PaPaGei-P one model is stated to be best across all tasks; for PaPaGei-S they "choose three models with the highest performance". So 11.53 may not come from the released `papagei_s.pt` at all, and P is the cleaner reproduction target. This is not distinguishable from a pipeline error using the released artefacts, which is why the interpretation is registered in advance in `docs/pre-registered-decisions.md`.
+
+**Their three validation subjects have no stated role.** Alpha comes from `GridSearchCV`'s internal four-fold cross-validation on the training set. Nothing in the paper or code uses the validation split. We hold them out unused rather than training on twelve.
+
 **Record the rejection rate per subject.** It varies, and it feeds the "usable minutes vs wear time" analysis.
 
 **PPG-DaLiA loading gotcha:** files are pickled Python 2 objects. Use `encoding='latin1'` or it fails with what looks like corruption.

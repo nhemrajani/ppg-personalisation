@@ -40,7 +40,11 @@ BPM, the same metric the study reports, computed per subject and averaged so tha
 selection and evaluation measure the same thing.
 
 **Selection under PaPaGei's protocol, for the reproduction.** Their split is nine
-training, three validation and three test subjects. Enumerating all 455 test triples
+training, three validation and three test subjects. The three validation subjects have
+no stated role in their linear evaluation: alpha comes from `GridSearchCV`'s own
+four-fold cross-validation within the training set, and nothing in the paper or the
+code uses a validation split to select it. They are therefore held out and left
+unused here, which matches their stated split rather than quietly training on twelve. Enumerating all 455 test triples
 leaves a free choice of which three of the remaining twelve become validation, and
 with 455 triples there is enough variation to tune against by accident. The rule,
 fixed here: **the three lowest remaining subject identifiers become validation**, the
@@ -67,7 +71,37 @@ where there is no obligation to match anyone.
 its warm start. Arm C1's shrinkage strength and Arm C2's rank are separate ranges and
 are registered before those arms run, not here.
 
-## Scope
+## Reclassification of the polarity experiment, 28 September 2026
 
-Polarity is a side experiment of about a day. It does not displace the frontier. If
-the effect is material it becomes a discussion section, not a change of direction.
+Registered as a side experiment earlier today. It is now a **control for Sub Question
+3**, and the reason is recorded here so that it too is dated.
+
+Sub Question 3 attributes the difference between PaPaGei-P and PaPaGei-S to their
+treatment of subject identity. The two checkpoints also differ in sign invariance: P
+trains with negation at probability 0.20, and S deliberately avoids augmentations that
+alter morphology. On a dataset whose signal is inverted, sign invariance is a confound
+for the identity comparison and could account for the entire gap. Running both
+checkpoints on correctly oriented signal isolates the objective.
+
+It still does not displace the frontier, and it still costs minutes because both
+polarities are already embedded. What changes is that Sub Question 3 cannot be
+answered without it.
+
+## A limit on what the reproduction can establish, recorded 28 September 2026
+
+Their section 4.1: "We performed five iterations of pre-training and selected the
+best-performing model for each downstream task. For SimCLR and PaPaGei-P, a single
+model consistently achieves the best performance across all tasks. For BYOL, we select
+two models that perform best across all tasks. Similarly, for TF-C and PaPaGei-S, we
+choose three models with the highest performance."
+
+So the published figures are the best of five pre-training runs, chosen per downstream
+task. For PaPaGei-S that is explicitly not one model across tasks, which means the
+11.53 on PPG-DaLiA heart rate may come from a checkpoint other than the single
+`papagei_s.pt` released on Zenodo. PaPaGei-P is the cleaner target, since one model is
+stated to be best on everything.
+
+Registered in advance so that the interpretation of a miss is fixed before the result
+exists: if the reproduction lands outside the 455-triple distribution on S but inside
+on P, model selection across pre-training runs is a live explanation alongside a
+pipeline error, and the two are not distinguishable with the released artefacts.
