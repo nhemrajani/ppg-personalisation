@@ -311,6 +311,10 @@ Going from six subjects to fourteen, more than doubling the population, buys **0
 
 So what remains after six subjects is not a shortage of population data. It is individual variation, which is exactly what per-person adaptation exists to address. This is a direct argument for the study's premise, and it came out of work already done. It belongs in the midterm.
 
+**Sub Question 2 is already answerable, and the answer is structural** (`python -m src.subject_difficulty`, figure `gate4_subject_difficulty.png`). Per-subject error under the unadapted population model varies by a factor of 2.5, from 7.14 BPM on S7 to 24.46 on S5. That variation is not noise. **How far a subject's median heart rate sits from the population median predicts their error with r = 0.87, explaining 76 per cent of the variance.** Signal quality is much weaker (r = 0.50, p = 0.06) and age, duration and heart-rate spread show nothing.
+
+S5 and S6 have median heart rates of 122 and 121 against 72 to 88 for the other thirteen, and their signal is not unusually noisy. The population model fails people who are unlike the population, and it does so predictably enough that the people who need adaptation can be identified before any of it is fitted. With the saturation result, the pair make the study's case: more population data does not help, and what remains is concentrated on identifiable individuals.
+
 **Sub Question 3 is not confounded by sign invariance.** P beats S on 14 of 15 subjects in both polarities, by 1.34 BPM as-is and 2.18 flipped. The ordering survives the control, so whatever separates the two objectives on this dataset is not their treatment of sign.
 
 ### Gate 5 — Experiment harness
