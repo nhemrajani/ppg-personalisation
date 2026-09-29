@@ -52,6 +52,17 @@ cross-validation within the fourteen, **grouped by subject so that no subject ap
 in two folds**, using `GroupKFold` with **seven folds of two subjects each**, which
 divides evenly. The held-out subject takes no part in selection.
 
+**Amendment, same day, before any fit.** PaPaGei's own code fixes the settings for the
+reproduction, and matching them is the entire point of a reproduction, so a wider grid
+would be a different experiment. The reproduction therefore uses their configuration
+exactly: `alpha` over `[0.1, 1.0, 10.0, 100.0]`, a `StandardScaler` fitted on the
+training subjects and applied to test, `GridSearchCV` with `cv=4` and scoring on
+negative mean squared error, with MAE reported. Their cross-validation is not grouped
+by subject; the reproduction keeps that rather than correcting it.
+
+The grid and rules registered above continue to govern **our own arms**, A through D,
+where there is no obligation to match anyone.
+
 **Applies to every arm that fits a ridge**, which is A, B and B2 directly, and C1 as
 its warm start. Arm C1's shrinkage strength and Arm C2's rank are separate ranges and
 are registered before those arms run, not here.

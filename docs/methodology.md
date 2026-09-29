@@ -69,7 +69,8 @@ throughout, PaPaGei-S and PaPaGei-P, for the reason set out in Sub Question 3.
 
 The two checkpoints are released as different classes. PaPaGei-S is a `ResNet1DMoE`
 carrying mixture-of-experts heads and PaPaGei-P a plain `ResNet1D` without them. The
-embedding paths are nonetheless identical tensor for tensor, since the
+embedding paths are nonetheless identical in shape, tensor for tensor, though the
+two are separately pretrained and so differ in value, since the
 mixture-of-experts heads branch off after global pooling and served as auxiliary
 pretraining targets rather than feeding the embedding. Sub Question 3 therefore
 compares two pretraining objectives on one architecture, which is what it requires.
@@ -343,7 +344,7 @@ Four changes, each verified against PaPaGei's paper, code or released weights on
 
 2. **Encoder class, in 4.3.** The draft described the encoder as `ResNet1DMoE` for
    both checkpoints. Only PaPaGei-S is; PaPaGei-P is a plain `ResNet1D`. Checking the
-   released weights shows the embedding paths are identical tensor for tensor, so the
+   released weights shows the embedding paths match in shape, tensor for tensor, so the
    comparison in Sub Question 3 is unaffected, but the claim as drafted was wrong.
 
 3. **Mixture-of-experts probing, in 4.5.** The draft suggested the mixture-of-experts
