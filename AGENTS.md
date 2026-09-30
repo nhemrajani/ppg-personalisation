@@ -1,10 +1,10 @@
-# CLAUDE.md
+# AGENTS.md
 
-Project context for Claude Code. Read this before writing any code.
+Project context for Codex. Read this before writing any code.
 
 The authoritative method is `docs/methodology.md`, written by the author and transcribed from the proposal. This file is the working summary plus everything verified against PaPaGei's code, paper and weights. Where they disagree, the methodology document wins on design and this file wins on verified facts.
 
-> Disclaimer: work in progress, drafted with Claude Code. Provisional and subject to revision until updated with all the relevant information.
+> Disclaimer: work in progress, drafted with Codex. Provisional and subject to revision until updated with all the relevant information.
 
 ---
 
@@ -123,12 +123,6 @@ Consequences: PaPaGei's SQI is skewness, where higher means cleaner on conventio
 **Standing rule: discoveries do not become pipeline modifications.** Every fix breaks the reproduction. Run their pipeline exactly, report what it does, and put corrections in a clearly labelled extension. There are now four findings about flaws in their pipeline; they belong in a short methods subsection, reported neutrally with evidence. This paper is about the cost frontier, not about what is wrong with PaPaGei.
 
 Undocumented parameters and their effects: `docs/undocumented-parameters.md`.
-
-Full experimental report: `docs/experiment-report.md`.
-
-**Arm B is robust across backbone and protocol; Arm C1 is not.** Improvement over Arm A, paired per subject, in all four cells: B gives +2.08, +1.50, +2.97 and +2.19, significant in every one. C1 gives +2.03, -0.23, +0.01 and **-1.34**, significant in one cell and significantly worse than doing nothing in another. The earlier reading that B and C1 are equivalent held only in the single cell where both were first measured. Two parameters estimated in closed form are stable; 513 estimated from the same limited data are not.
-
-**Arm B2 works only on PaPaGei-S**, +0.34 and +0.30 on the two protocols, with no detectable gain on PaPaGei-P. Reweighting population subjects by similarity helps when the representation does not already encode subject identity, which bears directly on Sub Question 3.
 
 Citations and claims checked against the primary sources: `docs/source-verification.md`. Four citations are wrong, two claims need qualifying, and Bent et al. 2020 is the strongest unused evidence in the bibliography: full Fitzpatrick range, the same Empatica E4, no significant skin-tone effect on heart-rate accuracy, but 30 per cent higher error during activity than at rest.
 
