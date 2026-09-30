@@ -373,7 +373,33 @@ Checked separately: C1's shrinkage selection lands on the weakest value in the r
 A secondary budget definition, sampling proportionally across activity runs rather than taking a temporal prefix, would separate composition from volume. It is worth registering and running as a labelled variant.
 
 ### Gate 7 — Arm C2
-Resolve the convolutional question. Verify it trains and loss falls before worrying whether it helps. Rank sweep = the cost axis.
+**Status: passed 2026-09-29**, with Arm D alongside. `python -m src.stage7`.
+
+**The frontier.** PaPaGei-P, activity-stratified, all available personal data:
+
+| Arm | Trainable per person | Stored | User labels | MAE | vs A |
+| --- | --- | --- | --- | --- | --- |
+| A, population model | 0 | 0 | none | 11.72 | |
+| **B, affine correction** | **2** | **8 B** | yes | **9.65** | **-2.08** |
+| B2, unlabelled reweighting | 0 | 513 values | none | 11.57 | -0.16 |
+| C1, per-person output layer | 513 | 2 KB | yes | 9.69 | -2.03 |
+| C2 rank 1 | 2,048 | 8 KB | yes | 12.53 | +0.80 |
+| C2 rank 4 | 8,192 | 32 KB | yes | 11.43 | -0.29 |
+| C2 rank 16 | 32,768 | 128 KB | yes | 11.12 | -0.60 |
+| D, full fine-tuning | 4,993,024 | 20 MB | yes | 12.12 | +0.40 |
+
+**Answer to the main research question: adaptation stops being worth its cost immediately after two parameters.** Paired per-subject differences, with bootstrap intervals:
+
+- Arm B beats Arm A by **+2.08 BPM [1.01, 3.28]**, better on 13 of 15 subjects.
+- C2 at rank 16 against Arm A is **+0.60 [-0.76, +2.22]**, 7 of 15. No detectable difference.
+- Arm D against Arm A is **-0.40 [-2.39, +1.73]**, 7 of 15, and worse on 8 of 15. No detectable difference, point estimate worse.
+- Arm B beats C2 rank 16 by **+1.48 [0.96, 1.95]** and Arm D by **+2.47 [1.26, 3.71]**.
+
+So two stored values is the only method that detectably improves on doing nothing. Everything costlier is either indistinguishable from the population model or indistinguishable from two values, and the two most expensive arms are significantly *worse* than the cheapest.
+
+**Arm D behaves exactly as the methodology predicted.** It overfits on minutes of data, is worse than the unadapted model on 8 of 15 subjects, and demonstrates that adaptation capacity is not monotonically beneficial. Its budget curve is 23.89, 23.77, 18.09, 14.11, 12.25, 12.12 across the sweep, so even with all available data it never recovers.
+
+**Caveat to state in the paper.** Arms B and C1 are closed-form least squares; C2 and D are trained by gradient descent at a fixed step count and learning rate, registered in advance. Part of the gap is therefore optimisation rather than capacity, and a differently tuned C2 might do better. Tuning those settings after seeing test performance is exactly what the pre-registration forbids, so the honest statement is that under a protocol fixed in advance, the trained arms lose.
 
 ### Gate 8 — Arm D, both backbones, figures
 Complete frontier. Both graphs. Stratify by activity and by subject.
