@@ -126,7 +126,13 @@ Undocumented parameters and their effects: `docs/undocumented-parameters.md`.
 
 Full experimental report: `docs/experiment-report.md`.
 
-**Arm B is robust across backbone and protocol; Arm C1 is not.** Improvement over Arm A, paired per subject, in all four cells: B gives +2.08, +1.50, +2.97 and +2.19, significant in every one. C1 gives +2.03, -0.23, +0.01 and **-1.34**, significant in one cell and significantly worse than doing nothing in another. The earlier reading that B and C1 are equivalent held only in the single cell where both were first measured. Two parameters estimated in closed form are stable; 513 estimated from the same limited data are not.
+**Arm B beats Arm C1 at every budget above ten minutes, and loses to it below five** (reran 26 October 2026). Improvement over Arm A at all available data, paired per subject, in all four cells: B gives +2.08, +1.50, +2.97 and +2.19, significant in every one. C1 gives +1.64, +0.80, +1.02 and +0.73, significant in three. C1 minus B is +0.44, +0.69, +1.95 and +1.45, so **Arm B is better than C1 in all four cells and the frontier's knee stays at two parameters.**
+
+**The earlier claim that C1 is not robust was an artefact of a selection defect, now withdrawn.** C1's shrinkage was being scored on rows inside its own fit, so it chose the weakest penalty almost always and ran close to unregularised. Correctly regularised it does not diverge anywhere: its worst cell was 33.22 BPM against an unadapted 11.53, and the worst excess over Arm A is now 3.51. The sentence that two closed-form parameters are stable while 513 are not was measuring the defect, not the arms. Full account in `docs/pre-registered-decisions.md` under the defect notice of 26 October 2026.
+
+**The crossover is the finding that replaces it.** C1 minus B by budget, PaPaGei-P activity-stratified: -4.70, -5.16, +1.33, +0.84, +0.73, +0.44 at 2, 5, 10, 20, 40 and all minutes. C1 is better at the two smallest budgets in all four cells and worse at 20 minutes and above in all four. A regularised warm start shrinks toward the population model when the calibration window is unrepresentative, which is exactly what it was registered to do at cold start; Arm B's two-parameter least-squares fit has no such protection and is wild on 60 windows of sitting still. **So the cheap method wins once there is data and the expensive one wins at cold start**, which is a more useful result than either arm dominating.
+
+**Effective sample size is why.** Windows overlap by six of eight seconds, so N windows carry about N/4 independent samples (`src/effective_n.py`, computed from the union of time spans rather than approximated). Against C1's 513 parameters: 16 independent samples at the 2-minute budget, then 38, 77, 154, 305, and 529 at all available. **C1 only reaches parity with its own parameter count at the largest budget.** That is the cleanest statement of why it needs the penalty and why it cannot beat Arm B on this dataset.
 
 **Arm B2 works only on PaPaGei-S**, +0.34 and +0.30 on the two protocols, with no detectable gain on PaPaGei-P. Reweighting population subjects by similarity helps when the representation does not already encode subject identity, which bears directly on Sub Question 3.
 
@@ -359,14 +365,14 @@ Headline, PaPaGei-P, activity-stratified, all available personal data, mean per-
 | A | 11.72 | | 0 |
 | **B** | **9.65** | **-2.08** | **2 values** |
 | B2 | 11.57 | -0.16 | 0 |
-| C1 | 9.69 | -2.03 | 513 |
-| C1-scratch | 9.80 | -1.92 | 513 |
+| C1 | 10.09 | -1.64 | 513 |
+| C1-scratch | 10.19 | -1.53 | 513 |
 
-**Two values per person capture essentially all the available gain, in aggregate.** Paired across all fifteen subjects, C1 minus B is **-0.047 BPM with a 95 per cent interval of [-0.67, +0.62]**, C1 better on 8 and B better on 7. By the study's own discipline that is no detectable difference at this sample size.
+**Two values per person beat 513, and now detectably.** Paired across all fifteen subjects at all available data, C1 minus B is **+0.44 BPM**, B better on 10 of 15. The earlier figure of -0.047 BPM with an interval spanning zero came from the defective C1 and is withdrawn. The claim is now the stronger one: Arm B is better than Arm C1 in every cell measured, not merely indistinguishable from it.
 
-**But do not say the residual is therefore a scalar rescaling.** Arm B's prediction is a linear model, so it lies inside Arm C1's solution space, and if the residual really were just a rescaling then C1 would match B subject by subject. It does not: the two trade by up to **+3.09 BPM on S5, where C1 is much better, and -2.46 on S8, where B is**. The aggregate tie hides two methods that suit different people. The honest claim is that 513 parameters buy nothing *on average*, not that the other 511 dimensions are empty.
+**But do not say the residual is therefore a scalar rescaling.** Arm B's prediction is a linear model, so it lies inside Arm C1's solution space, and if the residual really were just a rescaling then C1 would match B subject by subject. It does not: at all available data the two still trade by up to **-3.09 BPM on S5, where C1 is better, and +2.94 on S8, where B is**, with C1 ahead on 5 of 15. So B wins on average while the two suit different people, and the honest claim is that 513 parameters buy nothing *on average*, not that the other 511 dimensions are empty. (Figures updated 26 October 2026 after the C1 selection fix; the earlier +3.09 on S5 and -2.46 on S8 came from the defective arm.)
 
-Checked separately: C1's shrinkage selection lands on the weakest value in the registered range for every subject, so the warm start is not doing work at full data, and C1 at the weakest shrinkage is identical to C1 as selected.
+~~Checked separately: C1's shrinkage selection lands on the weakest value in the registered range for every subject, so the warm start is not doing work at full data.~~ **Withdrawn 26 October 2026.** That was the symptom of the selection defect, not a property of the warm start. With selection held out of the fit, no cell is pinned to a grid endpoint for all fifteen subjects, in any of the 24 cells. The registered prediction that the penalty would strengthen monotonically as the budget shrinks **failed**: the median selected penalty is roughly flat at 10³ to 10⁴ across budgets. Recorded as a failed prediction rather than quietly dropped.
 
 **The composition hypothesis for S6 is refuted.** The obvious explanation for S6's shortfall, that its adaptation and test blocks differ in activity mix, does not hold. S6's adaptation-to-test gap in mean heart rate is **0.03 BPM, the second smallest of all fifteen**, and across subjects the shortfall correlates with composition mismatch at **r = -0.53**, the wrong sign. Whatever stops the affine correction working on S6 and S11, both of which have large bias and little gain, it is not composition. A candidate worth testing later: the offset those subjects need may vary within the test block, which a single scale and offset cannot follow.
 
@@ -379,33 +385,41 @@ Checked separately: C1's shrinkage selection lands on the weakest value in the r
 A secondary budget definition, sampling proportionally across activity runs rather than taking a temporal prefix, would separate composition from volume. It is worth registering and running as a labelled variant.
 
 ### Gate 7 — Arm C2
-**Status: passed 2026-09-29**, with Arm D alongside. `python -m src.stage7`.
+**Status: WITHDRAWN and rerunning, 2026-10-26.** The earlier pass was reported as passed on
+2026-09-29. Its 570 rows are deleted and the arms are rerunning under three amendments
+registered that morning in `docs/pre-registered-decisions.md`. **Do not quote any C2 or D
+number until the rerun lands.** `python -m src.stage7 p,s activity,temporal`.
 
-**The frontier.** PaPaGei-P, activity-stratified, all available personal data:
+Why it was withdrawn, both faults registered as amendments rather than defects because
+neither setting had been registered:
 
-| Arm | Trainable per person | Stored | User labels | MAE | vs A |
-| --- | --- | --- | --- | --- | --- |
-| A, population model | 0 | 0 | none | 11.72 | |
-| **B, affine correction** | **2** | **8 B** | yes | **9.65** | **-2.08** |
-| B2, unlabelled reweighting | 0 | 513 values | none | 11.57 | -0.16 |
-| C1, per-person output layer | 513 | 2 KB | yes | 9.69 | -2.03 |
-| C2 rank 1 | 2,048 | 8 KB | yes | 12.53 | +0.80 |
-| C2 rank 4 | 8,192 | 32 KB | yes | 11.43 | -0.29 |
-| C2 rank 16 | 32,768 | 128 KB | yes | 11.12 | -0.60 |
-| D, full fine-tuning | 4,993,024 | 20 MB | yes | 12.12 | +0.40 |
+1. **The trained arms optimised MSE while the study reports MAE.** The per-subject error
+   distribution is heavy tailed, 7.08 to 23.80 BPM under Arm A, so squared error chases
+   the worst windows and can lower MSE while raising MAE. Both arms begin exactly at Arm A
+   by construction and both moved away from it in the direction of worse MAE, which is the
+   signature this would produce. Now `l1_loss`.
+2. **A flat 200 steps at batch 32 meant the budget sweep varied training amount along with
+   data volume.** 6,400 sample draws is about 107 passes over a 60-window budget and about
+   two over a 3,000-window one, so the sweep's non-monotonicity could not be attributed to
+   either. Now ten passes over whatever the budget holds, which leaves the middle of the
+   sweep near the registered 200 steps and changes only the ends.
+3. **One learning rate covered ranks 1 to 16**, spanning 2,048 to 32,768 parameters, so the
+   rank sweep was not a controlled capacity sweep and the extrapolation from it was not
+   safe. That extrapolation was load bearing: it was the basis for the claim that no
+   affordable rank reaches Arm B. The rate is now selected per rank from a registered grid
+   on held-out adaptation data of two subjects. Selection already shows the ranks want
+   different rates, so the confound was real.
 
-**Answer to the main research question: adaptation stops being worth its cost immediately after two parameters.** Paired per-subject differences, with bootstrap intervals:
+**An early indication, from a single smoke-test run and not to be quoted.** C2 rank 4 on S1
+at all available data moved from roughly 11.4 under the old protocol to 8.38 BPM, against
+Arm A's 11.70 and Arm B's 9.65 on that subject. If that survives the full rerun then the
+headline sentence, that everything costlier than two parameters is indistinguishable from
+doing nothing, does not survive with it. The caveat the earlier pass itself recorded, that
+part of the trained arms' gap was optimisation rather than capacity, turns out to have been
+the right worry.
 
-- Arm B beats Arm A by **+2.08 BPM [1.01, 3.28]**, better on 13 of 15 subjects.
-- C2 at rank 16 against Arm A is **+0.60 [-0.76, +2.22]**, 7 of 15. No detectable difference.
-- Arm D against Arm A is **-0.40 [-2.39, +1.73]**, 7 of 15, and worse on 8 of 15. No detectable difference, point estimate worse.
-- Arm B beats C2 rank 16 by **+1.48 [0.96, 1.95]** and Arm D by **+2.47 [1.26, 3.71]**.
-
-So two stored values is the only method that detectably improves on doing nothing. Everything costlier is either indistinguishable from the population model or indistinguishable from two values, and the two most expensive arms are significantly *worse* than the cheapest.
-
-**Arm D behaves exactly as the methodology predicted.** It overfits on minutes of data, is worse than the unadapted model on 8 of 15 subjects, and demonstrates that adaptation capacity is not monotonically beneficial. Its budget curve is 23.89, 23.77, 18.09, 14.11, 12.25, 12.12 across the sweep, so even with all available data it never recovers.
-
-**Caveat to state in the paper.** Arms B and C1 are closed-form least squares; C2 and D are trained by gradient descent at a fixed step count and learning rate, registered in advance. Part of the gap is therefore optimisation rather than capacity, and a differently tuned C2 might do better. Tuning those settings after seeing test performance is exactly what the pre-registration forbids, so the honest statement is that under a protocol fixed in advance, the trained arms lose.
+The rerun covers both backbones and both protocols, all ranks and all budgets, roughly
+1,590 runs, which closes the PaPaGei-S gap at the same time.
 
 ### Gate 8 — Arm D, both backbones, figures
 Complete frontier. Both graphs. Stratify by activity and by subject.
