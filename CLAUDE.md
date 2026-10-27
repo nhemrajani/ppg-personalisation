@@ -402,41 +402,84 @@ Headline, PaPaGei-P, activity-stratified, all available personal data, mean per-
 A secondary budget definition, sampling proportionally across activity runs rather than taking a temporal prefix, would separate composition from volume. It is worth registering and running as a labelled variant.
 
 ### Gate 7 — Arm C2
-**Status: WITHDRAWN and rerunning, 2026-10-26.** The earlier pass was reported as passed on
-2026-09-29. Its 570 rows are deleted and the arms are rerunning under three amendments
-registered that morning in `docs/pre-registered-decisions.md`. **Do not quote any C2 or D
-number until the rerun lands.** `python -m src.stage7 p,s activity,temporal`.
+**Status: passed 2026-10-27 for Arm C2. Arm D is withdrawn pending a rate reselection**
+(`docs/pre-registered-decisions.md`, 27 October). The rerun under the three amendments
+registered on 26 October wrote 144 configurations, fifteen subjects each, in 4.4 hours.
+`python -m src.stage7 p,s activity,temporal`.
 
-Why it was withdrawn, both faults registered as amendments rather than defects because
-neither setting had been registered:
+**The amendments changed the answer, and the earlier headline was wrong.** Under the
+withdrawn protocol C2 at rank 16 beat Arm A by 0.60 BPM, no detectable difference. Under
+the corrected one it beats Arm A by **2.04 BPM**, and the smoke test's warning was right:
+the sentence that everything costlier than two parameters is indistinguishable from doing
+nothing does not survive. Most of that gap was optimisation, not capacity, exactly as the
+earlier pass's own caveat feared.
 
-1. **The trained arms optimised MSE while the study reports MAE.** The per-subject error
-   distribution is heavy tailed, 7.08 to 23.80 BPM under Arm A, so squared error chases
-   the worst windows and can lower MSE while raising MAE. Both arms begin exactly at Arm A
-   by construction and both moved away from it in the direction of worse MAE, which is the
-   signature this would produce. Now `l1_loss`.
-2. **A flat 200 steps at batch 32 meant the budget sweep varied training amount along with
-   data volume.** 6,400 sample draws is about 107 passes over a 60-window budget and about
-   two over a 3,000-window one, so the sweep's non-monotonicity could not be attributed to
-   either. Now ten passes over whatever the budget holds, which leaves the middle of the
-   sweep near the registered 200 steps and changes only the ends.
-3. **One learning rate covered ranks 1 to 16**, spanning 2,048 to 32,768 parameters, so the
-   rank sweep was not a controlled capacity sweep and the extrapolation from it was not
-   safe. That extrapolation was load bearing: it was the basis for the claim that no
-   affordable rank reaches Arm B. The rate is now selected per rank from a registered grid
-   on held-out adaptation data of two subjects. Selection already shows the ranks want
-   different rates, so the confound was real.
+**The frontier.** PaPaGei-P, activity-stratified, all available personal data. Paired
+per-subject differences against Arm A, 5,000-resample bootstrap intervals.
 
-**An early indication, from a single smoke-test run and not to be quoted.** C2 rank 4 on S1
-at all available data moved from roughly 11.4 under the old protocol to 8.38 BPM, against
-Arm A's 11.70 and Arm B's 9.65 on that subject. If that survives the full rerun then the
-headline sentence, that everything costlier than two parameters is indistinguishable from
-doing nothing, does not survive with it. The caveat the earlier pass itself recorded, that
-part of the trained arms' gap was optimisation rather than capacity, turns out to have been
-the right worry.
+| Arm | Trainable | Stored | User labels | MAE | vs A | 95% interval |
+| --- | --- | --- | --- | --- | --- | --- |
+| A, population model | 0 | 0 | none | 11.72 | | |
+| **B-offset, offset only** | **1** | **4 B** | yes | 10.22 | +1.50 | [+0.63, +2.54] |
+| **B, affine** | **2** | **8 B** | yes | **9.65** | **+2.08** | **[+1.03, +3.33]** |
+| B-ridge, shrunk affine | 2 | 8 B | yes | 9.70 | +2.02 | [+0.97, +3.23] |
+| B2, unlabelled reweighting | 0 | 2 KB | none | 11.57 | +0.16 | [-0.21, +0.55] |
+| C1, output layer | 513 | 2 KB | yes | 10.09 | +1.64 | [+0.49, +3.26] |
+| C2 rank 1 | 2,048 | 8 KB | yes | 11.05 | +0.67 | [-1.01, +2.62] |
+| C2 rank 4 | 8,192 | 32 KB | yes | 10.18 | +1.55 | [-0.05, +3.39] |
+| C2 rank 8 | 16,384 | 64 KB | yes | 9.88 | +1.84 | [+0.35, +3.64] |
+| C2 rank 16 | 32,768 | 128 KB | yes | 9.69 | +2.04 | [+0.62, +3.76] |
+| D, full fine-tuning | 4,993,024 | 20 MB | yes | withdrawn | | |
 
-The rerun covers both backbones and both protocols, all ranks and all budgets, roughly
-1,590 runs, which closes the PaPaGei-S gap at the same time.
+**The answer to the main research question survives, and in a better form.** It is no
+longer that costlier adaptation fails. It is that costlier adaptation **works and still
+does not beat two parameters**. Paired per-subject, at all available data:
+
+| Contrast | P activity | P temporal | S activity | S temporal |
+| --- | --- | --- | --- | --- |
+| B vs C2 rank 16 | +0.04 ns | -0.17 ns | **+1.88** | +0.94 ns |
+| B vs C2 rank 8 | +0.23 ns | -0.24 ns | **+1.63** | +0.95 ns |
+| B vs C1 | +0.44 ns | +0.69 ns | **+1.95** | **+1.45** |
+| B vs B-offset | **+0.57** | **+0.80** | **+0.64** | **+0.76** |
+
+Positive means Arm B is better; bold is a detectable difference, `ns` is none at this
+sample size. **Arm B is not beaten in any of the sixteen contrasts.** Against the 32,768
+parameters of C2 rank 16 it ties on PaPaGei-P and wins on PaPaGei-S. Against 513 it ties
+on P and wins on S. Against one parameter it wins in all four cells, so the second
+parameter earns its keep at full data even though the first does the cold-start work.
+
+**Cold start: only the one-parameter arm is bounded.** Worst excess over doing nothing
+across all 24 budget-cells: **B-offset +1.16**, C1 +3.51, B-ridge +7.68, C2 rank 16 +7.29,
+B +7.83. Every arm that fits a slope can extrapolate badly from an unrepresentative
+calibration window; an offset cannot, because it is bounded by a mean shift. That is the
+mechanism behind the crossover, and it now covers C2 as well as C1.
+
+**Registered predictions, scored.** Three of seven failed, and the one whose failure would
+have cost most held.
+
+1. C1 never exceeds Arm A by more than 2 BPM at any budget: **failed**, worst +3.51 at
+   s/temporal 10 minutes. The defect fix removed the catastrophe, 33.22 down to 3.51, but
+   not the overshoot.
+2. C1's selected penalty strengthens as the budget shrinks: **failed**, non-monotone, the
+   median runs 1e3, 1e2, 1e4, 1e4, 1e3, 1e3. The second half holds: it is no longer the
+   weakest value for every subject.
+3. C1 lands within 0.5 BPM of Arm B at all available data in all four cells: **failed**,
+   holds only on p/activity at +0.44; the others are +0.69, +1.95, +1.45.
+4. C1 does not overtake Arm B: **held**, in all four cells. This is the prediction
+   registered as the one whose failure would have moved the knee from two parameters to
+   513, and it held.
+5. C2 improves at every rank and reaches but does not clearly beat Arm B: **held**, all
+   twenty rank-cells improve on Arm A and none beats B.
+6. Arm D remains at or below Arm A at every budget: **failed**, and for a reason that is
+   my error rather than a property of the arm. See the defect notice.
+7. No arm's position on the cost axis moves: **held** trivially.
+
+**Caveat, unchanged and now sharper.** Arms B, B-offset, B-ridge and C1 are closed form;
+C2 is trained by gradient descent. Its rate is selected per rank on held-out adaptation
+data of two subjects, which is a thin basis, and the selected rate is the most aggressive
+in the grid at four of five ranks. Part of the remaining gap to Arm B may still be
+optimisation. The honest statement is that under a protocol fixed in advance, two stored
+values are not beaten by anything up to 32,768.
 
 ### Gate 8 — Arm D, both backbones, figures
 Complete frontier. Both graphs. Stratify by activity and by subject.

@@ -48,7 +48,8 @@ EPOCHS, MIN_STEPS = 10, 10
 # of the 29 September amendment, which was selected the same way.
 LR_GRID = (3e-3, 1e-3, 3e-4, 1e-4)
 LR_SELECTION_SUBJECTS = (1, 7)
-LR = {"D": 1e-5}
+LR = {"D": 1e-5}          # superseded 27 October; reselected under the L1 loss
+D_LR_GRID = (1e-5, 3e-6, 1e-6, 3e-7, 1e-7)
 
 TARGET_LAYER = "basicblock_list.17.conv2.conv"
 BUFFER_WINDOWS = 4  # windows overlap by six of eight seconds
@@ -144,7 +145,8 @@ def run_one(subject: int, budget, rank: int | None, protocol: str, index, device
         return None
 
     steps = step_count(len(rows))
-    rate = LR["D"] if rank is None else (lr if lr is not None else LR_GRID[1])
+    default = LR["D"] if rank is None else LR_GRID[1]
+    rate = lr if lr is not None else default
 
     x_adapt = torch.from_numpy(windows[rows]).unsqueeze(1)
     y_adapt = torch.from_numpy(((y[chunk] - mu) / sd).astype(np.float32))
@@ -228,20 +230,34 @@ def select_rates(index, device, backbone: str, ranks=None) -> dict[int, float]:
     part in. Selection happens once per rank rather than per row, following the
     precedent of the Arm D amendment of 29 September.
     """
-    print(f"selecting C2's learning rate per rank on S{LR_SELECTION_SUBJECTS}, "
+    print(f"selecting learning rates on S{LR_SELECTION_SUBJECTS}, "
           f"held-out adaptation data only")
-    chosen: dict[int, float] = {}
-    for rank in sorted(ranks) if ranks else RANKS:
-        scores = {}
-        for rate in LR_GRID:
-            values = [run_one(s, None, rank, "activity", index, device,
-                              backbone=backbone, lr=rate, select=True)
-                      for s in LR_SELECTION_SUBJECTS]
-            values = [r.mae for r in values if r]
-            scores[rate] = float(np.mean(values)) if values else float("inf")
-        chosen[rank] = min(scores, key=scores.get)
-        detail = "  ".join(f"{r:.0e}:{v:6.2f}" for r, v in scores.items())
-        print(f"  rank {rank:2d}  {detail}   chosen {chosen[rank]:.0e}", flush=True)
+    chosen: dict[int | None, float] = {}
+    pool = ranks if ranks else list(RANKS) + [None]
+    units = sorted(pool, key=lambda r: (r is None, r or 0))
+    for rank in units:
+        grid = LR_GRID if rank is not None else D_LR_GRID
+        scores, trained = {}, {}
+        for rate in grid:
+            runs = [run_one(s, None, rank, "activity", index, device,
+                            backbone=backbone, lr=rate, select=True)
+                    for s in LR_SELECTION_SUBJECTS]
+            runs = [r for r in runs if r]
+            scores[rate] = float(np.mean([r.mae for r in runs])) if runs else float("inf")
+            # Did the arm train at all? The registered criterion for Arm D.
+            moves = [json.loads(r.hyperparameters) for r in runs]
+            trained[rate] = bool(moves) and all(
+                m["adapt_mae_after"] < m["adapt_mae_before"] for m in moves)
+        # A rate that does not reduce training error has not trained, whatever it
+        # scores. Prefer the rates that trained; fall back only if none did.
+        pool = [r for r in grid if trained[r]] or list(grid)
+        chosen[rank] = min(pool, key=lambda r: scores[r])
+        label = f"rank {rank:2d}" if rank is not None else "arm D  "
+        detail = "  ".join(f"{r:.0e}:{scores[r]:6.2f}{'t' if trained[r] else ' '}"
+                           for r in grid)
+        if not any(trained.values()):
+            print(f"  {label}  NO RATE REDUCED TRAINING ERROR", flush=True)
+        print(f"  {label}  {detail}   chosen {chosen[rank]:.0e}", flush=True)
     return chosen
 
 
@@ -304,8 +320,10 @@ def main() -> None:
         if not pending:
             print(f"{backbone}: nothing left to run\n")
             continue
-        ranks_needed = {rank for _, rank, _ in pending if rank is not None}
-        rates = select_rates(index, device, backbone, ranks_needed) if ranks_needed else {}
+        # None is a selection unit in its own right: Arm D's rate is reselected
+        # under the absolute-error loss, registered 27 October 2026.
+        units = {rank for _, rank, _ in pending}
+        rates = select_rates(index, device, backbone, units) if units else {}
         print()
         for protocol in protocols:
             for rank in list(RANKS) + [None]:
@@ -316,8 +334,7 @@ def main() -> None:
                     rows = []
                     for subject in subjects:
                         row = run_one(subject, budget, rank, protocol, index, device,
-                                      backbone=backbone,
-                                      lr=rates.get(rank) if rank else None)
+                                      backbone=backbone, lr=rates.get(rank))
                         if row:
                             rows.append(row)
                     append(rows)
