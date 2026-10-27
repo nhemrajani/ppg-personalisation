@@ -132,6 +132,23 @@ Full experimental report: `docs/experiment-report.md`.
 
 **The crossover is the finding that replaces it.** C1 minus B by budget, PaPaGei-P activity-stratified: -4.70, -5.16, +1.33, +0.84, +0.73, +0.44 at 2, 5, 10, 20, 40 and all minutes. C1 is better at the two smallest budgets in all four cells and worse at 20 minutes and above in all four. A regularised warm start shrinks toward the population model when the calibration window is unrepresentative, which is exactly what it was registered to do at cold start; Arm B's two-parameter least-squares fit has no such protection and is wild on 60 windows of sitting still. **So the cheap method wins once there is data and the expensive one wins at cold start**, which is a more useful result than either arm dominating.
 
+**One parameter is safer than two, and the crossover is about regularisation rather than capacity** (Arms B-offset and B-ridge, registered and run 27 October 2026, `python -m src.stage9`). Arm B-offset fixes the slope at 1 and fits only a per-person offset: **one parameter, four bytes.**
+
+| Arm | Params | Worst excess over doing nothing, any cell any budget |
+| --- | --- | --- |
+| **B-offset** | **1** | **+1.16** |
+| C1 | 513 | +3.51 |
+| B-ridge | 2 | +7.68 |
+| B | 2 | +7.83 |
+
+B-offset beats Arm B at the two smallest budgets in **all eight cell-budget pairs, every one significant**, by up to 7.65 BPM, and it **matches Arm C1 at the smallest budget in all four cells** with the point estimate in its favour everywhere. It costs 0.57 to 0.80 BPM against Arm B at all available data, significantly in all four cells, which is the price of having no slope once a slope is estimable.
+
+So the knee is at **one** parameter at cold start and two once there is twenty minutes of data. The deployment rule is a schedule, not a model-size decision: fit the offset immediately, add the slope later. Arm C1's cold-start advantage was never about capacity; it was about being able to decline to adapt, and one parameter does that better and 513 times more cheaply.
+
+**Arm B-ridge is the instructive failure, and the sharpest form of the result.** Arm B's two parameters, penalised toward slope 1 and offset 0 with the strength selected on held-out adaptation data exactly as C1's is, nests Arm A and Arm B at its endpoints (both asserted in `check_degenerate`). It barely helps: it beats Arm B at the smallest budgets by 0.09 to 1.42 BPM, significant in only 3 of 8, and its worst excess over doing nothing is +7.68 against Arm B's +7.83. The selected penalty sits at the weakest end of the grid even at the two-minute budget. **The reason matters: the held-out slice shares the calibration window's composition, so it is equally unrepresentative of the test block and cannot reveal that the fitted slope will extrapolate badly.** Shrinkage selected on data from an unrepresentative window cannot protect against that window being unrepresentative. Only a structural constraint can, which is what B-offset is. This is a result about what cross-validation can and cannot see, and it belongs in the paper.
+
+Of the five registered predictions, 1, 3 and 5 hold outright, 4 holds at 40 minutes and above but misses the 0.2 BPM bound at 20 minutes in two cells, and **2 holds only directionally**: B-ridge's point estimate beats Arm B in all eight pairs but significantly in three.
+
 **Effective sample size is why.** Windows overlap by six of eight seconds, so N windows carry about N/4 independent samples (`src/effective_n.py`, computed from the union of time spans rather than approximated). Against C1's 513 parameters: 16 independent samples at the 2-minute budget, then 38, 77, 154, 305, and 529 at all available. **C1 only reaches parity with its own parameter count at the largest budget.** That is the cleanest statement of why it needs the penalty and why it cannot beat Arm B on this dataset.
 
 **Arm B2 works only on PaPaGei-S**, +0.34 and +0.30 on the two protocols, with no detectable gain on PaPaGei-P. Reweighting population subjects by similarity helps when the representation does not already encode subject identity, which bears directly on Sub Question 3.
