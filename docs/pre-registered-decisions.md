@@ -750,3 +750,40 @@ that have just been produced under the registered settings. Neither is worth doi
 on the strength of a result already seen. If a stabilised variant is wanted it is
 registered as a **separate labelled arm** with its own entry, run alongside rather than
 in place of Arm D, so that the comparison it enters is stated rather than silent.
+
+## Arm D's Result, Recorded 27 October 2026
+
+360 rows, 24 configurations, 69 minutes, launched through `src/freeze.py` on the
+annotated tag `armd-2026-10-27` at commit `a7fac63` on a clean tree. Every row carries
+that commit with no `-dirty` suffix and the executing-path digest `597c1b602592`. The run
+window is recorded in `src/provenance.py` on exit rather than at launch, because
+`provenance.py` is itself on stage7's path and committing to it would have broken the
+freeze.
+
+**The prediction I made in the entry above was wrong, and the record should say so
+plainly.** I wrote that a stability criterion would drive Arm D toward doing nothing and
+that it would contribute a frontier point at roughly Arm A's error. It does not. At the
+reselected rate Arm D trains: adaptation-block MAE falls on 7 to 11 of 15 subjects at the
+larger budgets, against 1 of 15 under the mismatched rate, and its budget curve is
+monotone downward after five minutes in all four cells. The reasoning that led me wrong
+was sound as far as it went, that the arm tends to Arm A as the rate tends to zero, but
+1e-7 over several hundred steps is not close enough to zero for that limit to bite.
+
+**The result.** Arm D beats Arm A at all available data by 0.63 to 1.11 BPM, detectably
+in none of the four cells, and is detectably **worse** than Arm A at the two smallest
+budgets in all four cells, by 3.15 to 11.28 BPM. Arm B beats Arm D at all available data
+in all four cells, **detectably in every one**, by 0.69 to 1.86 BPM. So the far end of the
+cost axis is occupied by an arm that works, costs 20 MB per person, and delivers about
+half of what eight bytes delivers.
+
+**The limitation stated earlier stands in weakened form.** The study still cannot claim
+that full fine-tuning has no more to give on this task, because the protocol was fixed in
+advance and a schedule or gradient clipping would probably improve it. What it can now
+claim is stronger than before: Arm D trained, under a protocol registered before the
+result was seen, and lost to two parameters in every cell. That is a comparison rather
+than a non-result.
+
+**One cell to treat with suspicion.** PaPaGei-S runs at 3e-7 selected by the fallback
+after the guard reported that no rate reduced training error on both selection subjects,
+and s/temporal is the single cell where Arm D never beats Arm A at any budget. These are
+the least reliable numbers in the study and are to be labelled as such wherever quoted.

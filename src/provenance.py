@@ -129,6 +129,19 @@ def exec_digest(job: str) -> str:
 RUN_WINDOWS: tuple[dict, ...] = (
     {
         "job": "stage7",
+        "since": "2026-10-27T14:02:34+00:00",
+        "until": "2026-10-27T15:11:12+00:00",
+        "launched_from": "armd-2026-10-27",
+        "why": "Arm D rerun at the rate reselected under the absolute-error loss, "
+               "registered 27 October. Launched through src/freeze.py on an annotated "
+               "tag of a clean tree, so this window is belt and braces: every row "
+               "carries commit a7fac63 with no -dirty suffix and digest 597c1b602592, "
+               "and the code is recoverable as `git checkout armd-2026-10-27`. The "
+               "window could not be committed while the job ran, because provenance.py "
+               "is itself on stage7's path, so it is recorded on exit.",
+    },
+    {
+        "job": "stage7",
         "since": "2026-10-27T02:49:36+00:00",
         "until": "2026-10-27T07:18:17+00:00",
         "launched_from": "3111aed",

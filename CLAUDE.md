@@ -402,10 +402,12 @@ Headline, PaPaGei-P, activity-stratified, all available personal data, mean per-
 A secondary budget definition, sampling proportionally across activity runs rather than taking a temporal prefix, would separate composition from volume. It is worth registering and running as a labelled variant.
 
 ### Gate 7 — Arm C2
-**Status: passed 2026-10-27 for Arm C2. Arm D is withdrawn pending a rate reselection**
-(`docs/pre-registered-decisions.md`, 27 October). The rerun under the three amendments
-registered on 26 October wrote 144 configurations, fifteen subjects each, in 4.4 hours.
-`python -m src.stage7 p,s activity,temporal`.
+**Status: passed 2026-10-27, both arms.** The rerun under the three amendments registered
+on 26 October wrote 144 configurations in 4.4 hours; Arm D was then rerun at a reselected
+learning rate, 24 configurations in 69 minutes, launched through `src/freeze.py` on the
+tag `armd-2026-10-27`. **That is the first run in this project with clean provenance:**
+every one of its 360 rows carries `a7fac63` with no `-dirty` suffix and the executing-path
+digest `597c1b602592`. `python -m src.stage7 p,s activity,temporal`.
 
 **The amendments changed the answer, and the earlier headline was wrong.** Under the
 withdrawn protocol C2 at rank 16 beat Arm A by 0.60 BPM, no detectable difference. Under
@@ -429,7 +431,7 @@ per-subject differences against Arm A, 5,000-resample bootstrap intervals.
 | C2 rank 4 | 8,192 | 32 KB | yes | 10.18 | +1.55 | [-0.05, +3.39] |
 | C2 rank 8 | 16,384 | 64 KB | yes | 9.88 | +1.84 | [+0.35, +3.64] |
 | C2 rank 16 | 32,768 | 128 KB | yes | 9.69 | +2.04 | [+0.62, +3.76] |
-| D, full fine-tuning | 4,993,024 | 20 MB | yes | withdrawn | | |
+| D, full fine-tuning | 4,993,024 | 20 MB | yes | 10.77 | +0.96 | [-0.54, +2.71] |
 
 **The answer to the main research question survives, and in a better form.** It is no
 longer that costlier adaptation fails. It is that costlier adaptation **works and still
@@ -441,16 +443,19 @@ does not beat two parameters**. Paired per-subject, at all available data:
 | B vs C2 rank 8 | +0.23 ns | -0.24 ns | **+1.63** | +0.95 ns |
 | B vs C1 | +0.44 ns | +0.69 ns | **+1.95** | **+1.45** |
 | B vs B-offset | **+0.57** | **+0.80** | **+0.64** | **+0.76** |
+| B vs D (4,993,024) | **+1.12** | **+0.69** | **+1.86** | **+1.56** |
 
 Positive means Arm B is better; bold is a detectable difference, `ns` is none at this
-sample size. **Arm B is not beaten in any of the sixteen contrasts.** Against the 32,768
+sample size. **Arm B is not beaten in any of the twenty contrasts.** Against the 32,768
 parameters of C2 rank 16 it ties on PaPaGei-P and wins on PaPaGei-S. Against 513 it ties
 on P and wins on S. Against one parameter it wins in all four cells, so the second
-parameter earns its keep at full data even though the first does the cold-start work.
+parameter earns its keep at full data even though the first does the cold-start work. And
+against all 4,993,024 it **wins detectably in all four cells**, which is the cleanest form
+of the result the study was built to produce.
 
 **Cold start: only the one-parameter arm is bounded.** Worst excess over doing nothing
 across all 24 budget-cells: **B-offset +1.16**, C1 +3.51, B-ridge +7.68, C2 rank 16 +7.29,
-B +7.83. Every arm that fits a slope can extrapolate badly from an unrepresentative
+B +7.83, D +11.77. Every arm that fits a slope can extrapolate badly from an unrepresentative
 calibration window; an offset cannot, because it is bounded by a mean shift. That is the
 mechanism behind the crossover, and it now covers C2 as well as C1.
 
@@ -470,8 +475,12 @@ have cost most held.
    513, and it held.
 5. C2 improves at every rank and reaches but does not clearly beat Arm B: **held**, all
    twenty rank-cells improve on Arm A and none beats B.
-6. Arm D remains at or below Arm A at every budget: **failed**, and for a reason that is
-   my error rather than a property of the arm. See the defect notice.
+6. Arm D remains at or below Arm A at every budget: **failed**, in both directions. It is
+   detectably **worse** than doing nothing at the two smallest budgets in all four cells,
+   by 3.15 to 11.28 BPM, and at 10 and 20 minutes on p/temporal. At all available data it
+   is 0.63 to 1.11 BPM **better** than Arm A, in none of the four cells detectably. The
+   first failure is what the methodology always predicted for this arm; the registered
+   prediction was simply stated too strongly.
 7. No arm's position on the cost axis moves: **held** trivially.
 
 **Caveat, unchanged and now sharper.** Arms B, B-offset, B-ridge and C1 are closed form;
@@ -532,3 +541,27 @@ Never cut: the splitting protocol, the confidence intervals, the reproduction ch
 | Supervised task-specific (Conv-LSTM) | **6.3** |
 
 The gap between frozen probing (~11) and supervised task-specific (6.3) is the headroom. The study asks how much of it per-person adaptation recovers, and at what cost.
+
+**Arm D needs a lot of data to be harmless and never becomes worth its price.** Mean
+per-subject MAE by budget, with Arm A in brackets:
+
+| | 2 | 5 | 10 | 20 | 40 | all |
+| --- | --- | --- | --- | --- | --- | --- |
+| p/activity (11.72) | 20.84 | 23.00 | 13.31 | 12.59 | 11.15 | 10.77 |
+| p/temporal (10.36) | 17.31 | 19.93 | 22.12 | 12.60 | 10.07 | 9.55 |
+| s/activity (13.14) | 17.47 | 17.13 | 14.26 | 13.58 | 12.48 | 12.03 |
+| s/temporal (11.53) | 14.68 | 14.94 | 13.36 | 12.25 | 12.26 | 10.90 |
+
+The curve is monotone downward after the five-minute budget in every cell and crosses
+Arm A between twenty and forty minutes. So the arm does train, and the earlier reading
+that a stability criterion would drive it to its do-nothing limit was wrong: training MAE
+falls on 7 to 11 of 15 subjects at the larger budgets against 1 of 15 under the broken
+rate. **What it buys at full data is about 1 BPM, roughly half what two parameters buy,
+for ten million times the storage.** That is the frontier's far end stated properly, and
+it is a better result than the withdrawn one because the arm is working rather than broken.
+
+**Arm D's rate differs by backbone and one cell is weaker than the other three.** PaPaGei-P
+runs at 1e-7, the smallest rate in the registered grid, and PaPaGei-S at 3e-7, chosen by
+the fallback after the guard reported that no rate reduced training error on both selection
+subjects. s/temporal is the one cell where Arm D never beats Arm A at any budget. Treat the
+PaPaGei-S Arm D numbers as the least reliable in the study and say so.
