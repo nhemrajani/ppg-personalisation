@@ -651,3 +651,60 @@ ignoring `results/` and `figures/` which are outputs, tags the tree, prints the 
 digest and the window entry to record here, and states that no commit is to be made to
 that tree while the job runs. Hash caching fixed the labelling of a run; a frozen tree
 and a tag are what make it reproducible.
+
+## Defect Notice: Arm D's Learning Rate Was Selected Under A Loss That No Longer Applies, Recorded 27 October 2026
+
+The amendment of 29 September selected Arm D's learning rate of 1e-5 by training-loss
+convergence on the adaptation block, across two subjects, at a time when the trained
+arms optimised **squared error**. The amendment of 26 October changed the loss to
+**absolute error**, so that the trained arms optimise the metric the study reports. It
+reselected Arm C2's rate per rank under the new loss. It did not reselect Arm D's.
+`LR["D"] = 1e-5` stayed hardcoded in `src/stage7.py` while `select_rates` ran only for
+the ranked arm. That is an oversight in applying the amendment, not a design decision.
+
+**The consequence is that Arm D does not train.** On the rerun's 360 rows the training
+MAE on the adaptation block **rises** rather than falls, by a median of 13 to 55 BPM
+depending on budget, and more than doubles on 218 of 360 runs. Loss traces oscillate
+upward, for example 1.40, 11.42, 18.04, 11.32 at the smallest budget. Test MAE reaches
+174.7 BPM against an unadapted 11.72. These are the numbers of a diverged optimisation,
+not of an overfitted model.
+
+**Why the loss change breaks a rate that previously worked.** Targets are standardised,
+so residuals start near 1. A squared-error gradient is proportional to the residual and
+therefore shrinks as the fit improves, which anneals the effective step size without
+anyone choosing to. An absolute-error gradient has constant magnitude whatever the
+residual, so it does not anneal. A rate validated under the first loss carries no
+guarantee under the second, and for 4,993,024 parameters it fails.
+
+**The instrumentation registered in the 26 October amendment is what caught this.**
+Logging training-set MAE before and after adaptation, and a four-point loss trace, was
+added so that a trained arm's number could not be reported without evidence that the
+arm had trained. It did that job. Without it the 62.48 BPM figure would have been
+reported as evidence that full fine-tuning overfits, which it is not.
+
+### Amendment: Arm D's Rate Is Reselected Under The Absolute-Error Loss
+
+Registered before the affected runs exist. The procedure is **the one already
+registered on 29 September, applied to the loss now in force**: the rate is chosen by
+training-loss convergence on the adaptation block alone, on subjects 1 and 7, at
+1e-5, 3e-6, 1e-6, 3e-7 and 1e-7, extending the grid downward because 1e-5 is now its
+divergent end. The criterion is whether the arm trains, not how well it scores. No
+test-block quantity is consulted at any point. This is the same code path
+`select_rates` already uses for Arm C2, extended to cover the unranked arm.
+
+**The 360 Arm D rows produced at 1e-5 under absolute-error loss are deleted rather
+than reported**, as the September amendment's rows were, and for the same reason: they
+record a broken optimisation rather than a result. The deletion is its own commit.
+
+**What this does and does not rescue.** If Arm D converges at a lower rate, the study
+regains its upper-bound arm and prediction 6 can be scored on a trained model. If it
+does not converge at any rate in the extended grid, the honest report is that full
+fine-tuning of this encoder on minutes of per-person data could not be made to train
+under a protocol fixed in advance, which is a weaker claim than overfitting and must be
+written as such. Either way the frontier's knee is unaffected, because Arm D sits at
+the far end of the cost axis and no arm's parameter count changes.
+
+**A standing lesson, recorded because it will recur.** An amendment that changes the
+objective invalidates every hyperparameter previously selected against the old one. The
+26 October entry should have said so and reselected both rates. Any future change to
+the loss, the target scaling or the step budget reselects every rate in the same commit.
