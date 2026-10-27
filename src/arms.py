@@ -21,6 +21,7 @@ from src.splits import Split
 from src.stage4 import OUR_ALPHAS, OUR_FOLDS
 
 SHRINKAGE = np.logspace(-3, 6, 10)  # registered: same range as the ridge penalty
+BUFFER_WINDOWS = 4  # 8 s at a 2 s shift: the overlap between a window and its neighbours
 TOLERANCE = 1e-8
 
 
@@ -136,29 +137,53 @@ def arm_c1(x, y, split, subject, budget: np.ndarray, base: Fitted, warm: bool = 
     _, _, x_test = _prepare(x, split)
 
     if len(budget) < 2:
-        return Fitted(base.predictions, 513, 2052, base.alpha, {"shrinkage": "all"})
+        return Fitted(base.predictions, 513, 2052, base.alpha,
+                      {"shrinkage": "degenerate", "n_fit": 0, "n_validation": 0})
 
     population = GramRidge(x_pop, y_pop)
     w_pop, b_pop = population.weights(base.alpha), population.y_mean
-    centre = x_adapt - population.x_mean
-    gram = centre.T @ centre
-    target = centre.T @ (y_adapt - b_pop)
-    size = gram.shape[0]
+    size = x_adapt.shape[1]
 
-    # Chosen on a validation slice of the adaptation block, never the test block.
+    def solve(gram, target, value):
+        rhs = target + value * w_pop if warm else target
+        return np.linalg.solve(gram + value * np.eye(size), rhs)
+
+    # Selected on a slice held OUT of the fit, never the test block. Scoring on
+    # rows that are inside the fit measures in-sample error, which falls as the
+    # penalty weakens, so the weakest penalty always wins and the arm runs
+    # unregularised. That was the defect of 26 October 2026; see the registration.
     cut = max(2, int(len(budget) * 0.75))
-    best, best_error = None, np.inf
-    for value in SHRINKAGE:
-        if warm:
-            w = np.linalg.solve(gram + value * np.eye(size), target + value * w_pop)
-        else:
-            w = np.linalg.solve(gram + value * np.eye(size), target)
-        error = mae(y_adapt[cut:], (x_adapt[cut:] - population.x_mean) @ w + b_pop)
-        if error < best_error:
-            best, best_error = w, error
+    if cut > len(budget) - 1:
+        cut = len(budget) - 1
+
+    # Windows overlap by six of their eight seconds, so the four windows either
+    # side of the cut share signal. Discard them, as every other block boundary
+    # in this study does, or the held-out slice is not held out.
+    fit_rows, validation_rows = slice(0, cut), slice(cut + BUFFER_WINDOWS, None)
+    fit_x, fit_y = x_adapt[fit_rows], y_adapt[fit_rows]
+    val_x, val_y = x_adapt[validation_rows], y_adapt[validation_rows]
+
+    if len(fit_x) < 2 or len(val_x) < 1:
+        selected = SHRINKAGE[-1]  # not enough data to select on; take the strongest
+    else:
+        centred_fit = fit_x - population.x_mean
+        gram_fit = centred_fit.T @ centred_fit
+        target_fit = centred_fit.T @ (fit_y - b_pop)
+        selected, best_error = None, np.inf
+        for value in SHRINKAGE:
+            w = solve(gram_fit, target_fit, value)
+            error = mae(val_y, (val_x - population.x_mean) @ w + b_pop)
+            if error < best_error:
+                selected, best_error = value, error
+
+    # Refit on the whole budget at the selected strength.
+    centre = x_adapt - population.x_mean
+    best = solve(centre.T @ centre, centre.T @ (y_adapt - b_pop), selected)
 
     return Fitted((x_test - population.x_mean) @ best + b_pop, 513, 2052, base.alpha,
-                  {"warm": warm})
+                  {"warm": warm, "shrinkage": float(selected),
+                   "shrinkage_index": int(np.argmin(np.abs(SHRINKAGE - selected))),
+                   "n_fit": int(len(fit_x)), "n_validation": int(len(val_x))})
 
 
 def check_degenerate(x, y, split, subject) -> None:
