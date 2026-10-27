@@ -470,3 +470,94 @@ If prediction 3 holds and prediction 4 fails, the central claim of the study wea
 the knee in the frontier would sit at 513 parameters rather than two. That outcome is
 recorded here as the one that would cost the most, so that it cannot be reinterpreted
 later.
+
+## Two Further Closed-Form Arms, Registered 27 October 2026
+
+Registered before either arm is fitted. They exist to test the mechanism claimed for the
+crossover found on 26 October, that Arm C1 beats Arm B at small budgets because it is the
+only arm in the sweep able to decline to adapt. If that is right the crossover is a
+statement about regularisation rather than about capacity, and a cheap arm with shrinkage
+should reproduce it.
+
+Arm B's failure mode at cold start is specific. Two minutes of sitting still spans a few
+BPM of heart rate, least squares fits a slope across that range, and the test block spans
+forty, so a small slope error becomes a large extrapolation error at the extremes. Arm B
+is not merely unhelpful there; it is worse than doing nothing.
+
+### Arm B-offset, one parameter
+
+The slope is fixed at 1 and only the offset is fitted:
+`offset = mean(y_adapt - predicted_adapt)`, applied to the test predictions.
+
+One parameter, four stored bytes per person. No slope means no extrapolation risk
+whatever the calibration window contains; the worst case is an unhelpful constant shift.
+
+This arm should arguably have been in the original design. The proposal's mechanism for
+per-person error is ridge shrinkage toward the training mean, which predicts a per-person
+**bias**, not a per-person gain. On that argument B-offset is the arm the theory points
+at and Arm B is already one parameter more than the theory requires. It is registered now
+rather than retrofitted into the original table, and the record shows it was added after
+Arm B's result was known.
+
+Degenerate case: an empty budget gives an offset of zero, which is Arm A exactly.
+
+### Arm B-ridge, two parameters shrunk toward the null correction
+
+The same two parameters as Arm B, penalised toward slope 1 and offset 0:
+
+```
+minimise  sum (y_i - a p_i - b)^2  +  lambda * n * [ sigma^2 (a - 1)^2 + b^2 ]
+```
+
+where `p` are the population model's predictions on the adaptation block, `sigma` is their
+standard deviation and `n` the number of windows. Solved as a two by two system,
+`theta = (X'X + lambda n P)^-1 (X'y + lambda n P theta0)` with `P = diag(sigma^2, 1)` and
+`theta0 = (1, 0)`.
+
+`SHRINKAGE_B = numpy.logspace(-4, 4, 9)`, registered here before use. Selected on a slice
+held out of the fit under the same discipline as the Arm C1 fix of 26 October, including
+the four-window discard at the cut, and refitted on the whole budget at the selected
+value. The selected value is recorded on every row.
+
+**Deviation from the brief that prompted this, with its reason.** The brief gives
+`a = (s_xy + lambda) / (s_xx + lambda)` with the offset left unpenalised, and states that
+at strong shrinkage this is Arm A exactly. It is not. With the offset profiled out, the
+limit is slope 1 with the offset equal to the mean residual, which is **Arm B-offset**,
+checked numerically before registering. Penalising both parameters gives the limit the
+brief asks for and nests the two existing arms as its endpoints: at the strongest
+shrinkage Arm B-ridge is Arm A, and at the weakest it is Arm B. That yields two degenerate
+assertions rather than one, which is a better instrument than either version.
+
+The penalty on the offset is scaled by `sigma^2` so that both terms carry units of BPM
+squared, the same as the data term, and a single `lambda` is dimensionless. Without that
+scaling one `lambda` would constrain an offset of tens of BPM and a slope of order one by
+wildly different amounts.
+
+### Predictions, Registered Before Either Arm Runs
+
+1. **B-offset beats Arm B at the two smallest budgets in all four cells.**
+2. **B-ridge beats Arm B at the two smallest budgets in all four cells.**
+3. **At least one of the two matches Arm C1 at the smallest budget**, their paired
+   difference's bootstrap interval containing zero.
+4. **At twenty minutes and above B-ridge converges on Arm B**, within 0.2 BPM, because the
+   selected shrinkage should weaken as the calibration window becomes representative.
+5. **B-offset is worse than Arm B at all available data** in at least three of four cells,
+   because by then there is enough data to estimate a slope and a real per-person gain
+   term exists.
+
+If prediction 3 holds, the crossover is about regularisation and not capacity: the knee
+sits at one or two parameters across the entire budget sweep, and the deployment
+recommendation becomes a shrinkage schedule rather than a choice of model size. If it
+fails, Arm C1 earns its place at cold start on capacity and the frontier has two genuine
+regimes. Both are reportable; the second is the more interesting and the first is better
+for the study's headline, which is the reason for registering the predictions first.
+
+## Limitation Recorded, Not Fixed: Arm C2's Rate Selection, 27 October 2026
+
+Arm C2's learning rate is selected on two subjects at the all-available budget. The rates
+chosen for ranks 1, 2 and 4 were 3e-3, 1e-3 and 3e-3, which is not monotone in capacity.
+With two subjects that is as likely to be selection noise as a real pattern, and a rate
+chosen at the all-available budget need not be right at a two-minute one. The compute
+argument for selecting this way stands, roughly twenty hours against sixty-five, and no
+test-block quantity is consulted at any point. Recorded as a limitation of the trained
+arms rather than corrected.
