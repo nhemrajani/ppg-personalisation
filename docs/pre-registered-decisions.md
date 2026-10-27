@@ -708,3 +708,45 @@ the far end of the cost axis and no arm's parameter count changes.
 objective invalidates every hyperparameter previously selected against the old one. The
 26 October entry should have said so and reselected both rates. Any future change to
 the loss, the target scaling or the step budget reselects every rate in the same commit.
+
+## Outcome Of Arm D's Rate Reselection, Recorded 27 October 2026
+
+Run before any Arm D row exists, on subjects 1 and 7, scored on held-out adaptation
+data only. Mean MAE on the held-out tail, with `t` marking a rate that reduced training
+error on both subjects:
+
+| Rate | 1e-5 | 3e-6 | 1e-6 | 3e-7 | 1e-7 |
+| --- | --- | --- | --- | --- | --- |
+| PaPaGei-P | 35.63 | 41.04 | 19.52 | 8.78 | **6.91 t** |
+| PaPaGei-S | 24.82 | 12.77 | 8.21 | 8.21 | 9.31 |
+
+**On PaPaGei-P only the smallest rate in the grid trains, and the sequence is monotone
+toward it.** On PaPaGei-S no rate reduced training error on both subjects; the guard
+reported that and the arm falls back to the best-scoring rate, 3e-7.
+
+**The monotonicity is the finding, and extending the grid downward would not change it.**
+As the rate goes to zero Arm D goes to Arm A, because the correction initialises at zero
+and the head is in the same optimiser at the same rate. A selection criterion that
+rewards stability therefore drives Arm D toward doing nothing, and on PaPaGei-P it goes
+all the way to the grid's edge. Chasing the edge with a wider grid would confirm the
+limit rather than find an interior optimum, so the grid is **not** extended. That
+decision is recorded here before the runs so it cannot be read later as having been made
+to protect a result.
+
+**What Arm D can and cannot be said to show.** Under the protocol registered in advance,
+which is absolute-error loss, ten epochs, Adam, no gradient clipping and no learning-rate
+schedule, Arm D is unstable at every rate that moves 4,993,024 parameters appreciably and
+stable only where it barely moves them. So Arm D will contribute a frontier point at
+roughly Arm A's error and 20 MB of storage per person. **That point is honest as a
+statement about this protocol and must not be written as a statement about full
+fine-tuning.** The study cannot distinguish "full fine-tuning does not help here" from
+"full fine-tuning could not be optimised here", and the limitation is to be stated in
+those words.
+
+**Why the protocol is not changed to rescue it.** Gradient clipping or a schedule would
+very likely stabilise Arm D. Applying either only to Arm D would make the arms
+incomparable, and applying it to all trained arms would invalidate the 1,800 Arm C2 rows
+that have just been produced under the registered settings. Neither is worth doing
+on the strength of a result already seen. If a stabilised variant is wanted it is
+registered as a **separate labelled arm** with its own entry, run alongside rather than
+in place of Arm D, so that the comparison it enters is stated rather than silent.
