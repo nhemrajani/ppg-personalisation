@@ -7,6 +7,41 @@ timestamp and the commit hash of the code that produced it.
 
 ---
 
+## Correction Notice, 26 October 2026
+
+**This report is superseded in part and is being rewritten.** A review on 26 October
+found one defect and three unregistered settings. All of them are recorded, with their
+reasons, in `docs/pre-registered-decisions.md`. Until the rewrite lands, read this
+report with the following withdrawals.
+
+**Withdrawn: everything this report says about Arm C1 failing.** Arm C1 selected its
+shrinkage penalty on rows that were inside its own fit, so it measured in-sample error,
+chose the weakest penalty almost every time, and ran close to unregularised. Section 5's
+claim that C1 is significantly worse than no adaptation in one cell, and the reading that
+two closed-form parameters are stable where 513 are not, were both measuring that defect.
+The test block was never touched, so no evaluation in this report was contaminated; the
+affected arm simply was not the registered one. Rerun on 26 October, C1 improves on Arm A
+in three of four cells, does not diverge anywhere, and **beats Arm B at the two smallest
+budgets in all four cells while losing to it above twenty minutes.**
+
+**Unchanged: the knee in the frontier.** Arm B is better than Arm C1 in all four cells at
+all available data, by +0.44, +0.69, +1.95 and +1.45 BPM. Two parameters still beat 513.
+The conclusion survives; the reason given for it does not.
+
+**Withdrawn: every number for Arms C2 and D.** Both trained on squared error while this
+study reports mean absolute error, and both trained for a flat 200 steps, which is about
+107 passes over the smallest budget and two over the largest. Their levels and their
+budget curves are therefore uninterpretable and the 570 rows are deleted. A rerun under
+three registered amendments is in progress. An early single-subject indication is that C2
+improves substantially, which would cost this report's headline sentence that everything
+costlier than two parameters is indistinguishable from doing nothing.
+
+**Unchanged: Gates 1 to 4, Arm A, Arm B, Arm B2, the reproduction, the 36-fold interval
+result, and every finding about the dataset, the polarity control or per-subject
+difficulty.** No fix touched any of them.
+
+---
+
 ## 1. What was built
 
 A reproducible pipeline, in the order it runs.
