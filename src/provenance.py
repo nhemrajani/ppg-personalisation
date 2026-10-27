@@ -130,7 +130,7 @@ RUN_WINDOWS: tuple[dict, ...] = (
     {
         "job": "stage7",
         "since": "2026-10-27T02:49:36+00:00",
-        "until": None,
+        "until": "2026-10-27T07:18:17+00:00",
         "launched_from": "3111aed",
         "why": "Stage 7 rerun. Verified 2026-10-27 that on stage7's path the only "
                "difference between 3111aed and HEAD is select_rates, and only in "
@@ -138,7 +138,7 @@ RUN_WINDOWS: tuple[dict, ...] = (
                "rate chosen per rank is unchanged. run_one, step_count, "
                "_head_from_ridge, arm_a, Run, append and every constant are "
                "byte-identical, as are all nine whole modules. Reproduce with "
-               "`python -m src.provenance stage7 3111aed HEAD`.",
+               "`python -m src.provenance stage7 3111aed HEAD`. Window closed to the last row written; the 2,160 rows inside it carried five later commit tokens from the per-row hash defect and were corrected to 3111aed.",
     },
 )
 
