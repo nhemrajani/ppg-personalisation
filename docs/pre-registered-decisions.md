@@ -581,3 +581,73 @@ while a job is appending to it.
 
 **Prevented from recurring:** `commit_hash()` is now cached for the life of the process,
 so a hash refers to the run rather than to whenever a row happened to be written.
+
+## Code Identity Of The Stage 7 Rerun, Verified 27 October 2026
+
+The run launched 26 October appends rows for about four hours and the tree moved
+underneath it, so its rows carry five different commit tokens. The question is whether
+the code producing numbers changed. It did not.
+
+Compared unit by unit between `3111aed`, the tree at launch, and HEAD, over the nine
+whole modules on the path and the named units of the three that changed. Reproduce with
+`python -m src.provenance stage7 3111aed HEAD`.
+
+**Identical:** `run_one`, `step_count`, `_head_from_ridge`, `_windows`, and every
+constant including `BATCH`, `SEED`, `EPOCHS`, `MIN_STEPS`, `LR`, `LR_GRID`,
+`TARGET_LAYER` and `RANKS`; `arm_a`, `Fitted`, `_prepare`, `SHRINKAGE`; `Run` and
+`append`; and `ridge.py`, `splits.py`, `lora.py`, `preprocess.py`, `papagei.py`,
+`embed.py`, `effective_n.py`, `data.py`, `quality.py`.
+
+**Changed:** `select_rates` alone, from `for rank in RANKS` to
+`for rank in sorted(ranks) if ranks else RANKS`. The loop body reads no rank other than
+its own, so per-rank selection is independent and the rate chosen for a given rank is
+unchanged whether the set is all five ranks or a subset. The 101 added lines in
+`arms.py` are Arms B-offset and B-ridge and the extended degenerate check, none of which
+Stage 7 calls. The change in `harness.py` is the hash caching, which touches the
+provenance field only.
+
+**Conclusion: resume is safe and the provenance correction is cosmetic.** No completed
+configuration needs rerunning.
+
+### Was The Launch Tree Clean
+
+Yes, for everything that matters, and the evidence is in the record rather than asserted.
+
+`3111aed` was committed at 02:49:36 UTC and the job launched immediately after. Its
+first row was written at 02:55:23 UTC, after learning-rate selection, and carries
+`e669da3` **without** the `-dirty` suffix. Between launch and that row the only commits
+were `73415dc` and `e669da3`, which touch `CLAUDE.md` and `docs/experiment-report.md`
+and no source file. So at the moment the first number was produced, `src/` on disk was
+clean and identical to `3111aed`.
+
+A second argument closes it independently of the timestamps. Every edit made during the
+run was subsequently committed, and the executing path at HEAD is identical to
+`3111aed`'s. Had there been an uncommitted edit to that path at launch, HEAD would now
+differ from `3111aed` there. It does not. **So the code that produced these rows is
+fully recoverable as `git show 3111aed:src/<file>`,** and the `-dirty` tokens from
+02:56 onward record edits to files off the path.
+
+The one thing this cannot exclude is an edit made and reverted before any commit. None
+was made, but the repository cannot prove that, which is the general reason for the
+freeze discipline below rather than a specific doubt about this run.
+
+### The Rule, In Code Rather Than In Judgement
+
+`src/provenance.py` digests the units on each job's number-producing path, scoped per
+job. Stage 7 skips a configuration only when it is complete for all fifteen subjects
+**and** every row carries an acceptable path identity; otherwise the configuration is
+rerun whole. Rows now record `src_digest`.
+
+Acceptance is keyed on the **run window**, not the commit, because a commit token
+identifies when a row was written rather than what wrote it. `RUN_WINDOWS` holds the
+window for this run with the verification above as its reason, left open until the job
+exits and closed to the last row's timestamp afterwards.
+
+### Freeze Discipline For The Remaining Long Jobs
+
+For budget definition 2 and the MOMENT backbone, launch through
+`python -m src.freeze <tag> -- <command>`. It refuses to start unless the tree is clean,
+ignoring `results/` and `figures/` which are outputs, tags the tree, prints the job's
+digest and the window entry to record here, and states that no commit is to be made to
+that tree while the job runs. Hash caching fixed the labelling of a run; a frozen tree
+and a tag are what make it reproducible.
