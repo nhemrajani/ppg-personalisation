@@ -328,3 +328,145 @@ is folded into the output layer so the arm still begins exactly at Arm A. Predic
 are returned to BPM before scoring. This is a numerical detail rather than a design
 choice, but it is recorded because it is the difference between an arm that trains and
 one that does not.
+
+## Defect Notice: Arm C1's Shrinkage Was Selected In Sample, Recorded 26 October 2026
+
+This is a defect notice rather than an amendment. It records that the implementation did
+not do what was registered, and that the registered behaviour has been restored. No
+decision changes.
+
+Arm C1's shrinkage strength was registered as a sweep over `numpy.logspace(-3, 6, 10)`
+selected on a validation slice of the adaptation block. The implementation built the
+Gram matrix and the right-hand side from the **whole** adaptation block and then scored
+each candidate on the final quarter of that same block. The scoring rows were inside
+the fit, so the comparison measured in-sample error, which falls as the penalty weakens.
+The loop therefore chose the weakest penalty in the grid for nearly every subject, and
+Arm C1 has been running close to unregularised at every budget in all four cells.
+
+This explains a symptom already recorded in CLAUDE.md and previously left unexplained:
+that C1's selection lands on the weakest value in the registered range for every
+subject. It was read at the time as evidence that the warm start does no work at full
+data. The correct reading is that the selection was not functioning.
+
+The test block was never touched, so no reported evaluation was contaminated. The defect
+affects which model Arm C1 deployed, not how it was scored, and it affects no other arm.
+
+**Restored behaviour.** The adaptation block is cut at 75 per cent. The model is fitted
+on the first part, each candidate penalty is scored on the held-out tail, and the
+selected penalty is then refitted on the whole budget. A **four-window buffer is
+discarded at the cut**, because windows overlap by six of their eight seconds and
+without it the last fitting window and the first scoring window share signal. Every
+other block boundary in this study already enforces a buffer for that reason; this one
+was missing because the slice was not previously held out at all.
+
+The selected penalty is now recorded on every row. It was not recorded before, which is
+why the defect survived a reading of the results.
+
+**Known limitation of the restored version, stated rather than fixed.** Budgets are
+temporal prefixes, so the held-out tail is the latest quarter of the adaptation block
+and under the activity-stratified protocol it is the latest activity runs rather than a
+balanced sample of all of them. Selection therefore happens on a composition that
+differs from the test block. A slice taken from the tail of each activity run would
+match composition better, and is not done here because it is a design change rather than
+a restoration. It is noted as a candidate for the second budget definition.
+
+All previously recorded C1 and C1-scratch rows were deleted rather than reported.
+
+## Amendment: The Trained Arms Optimise The Reported Metric, Registered 26 October 2026
+
+Registered before any rerun of Arms C2 and D. The rows produced under the previous
+setting were deleted rather than reported.
+
+**What was registered.** The study reports MAE, and the closed-form arms select on MAE.
+No loss function was registered for Arms C2 and D. The implementation used mean squared
+error, and the implementation clarification of 29 September refers to a squared-error
+loss, so MSE was the assumed default rather than a stated decision.
+
+**What changes.** Arms C2 and D now train on mean absolute error, so that the quantity
+optimised is the quantity reported.
+
+**Why.** The per-subject error distribution on this dataset is heavy tailed: S5 sits at
+23.8 BPM under Arm A against 7.08 for S7. Squared error weights the worst windows
+quadratically, so it can reduce MSE while raising MAE. Both trained arms begin exactly at
+Arm A by construction and both moved away from it in the direction of worse MAE, which is
+the signature this mismatch would produce. Aligning the loss with the metric is a change
+to a previously unregistered setting and is recorded as an amendment rather than a fix.
+
+MSE and MAE on the adaptation block are logged at the start and end of training on every
+run, so the direction each moved is visible in the record.
+
+## Amendment: Training Amount Is Fixed In Epochs, Not Steps, Registered 26 October 2026
+
+**What was registered.** A fixed 200 steps at batch size 32, with no early stopping, for
+both trained arms. The step count was fixed in advance because these are the arms most
+exposed to tuning.
+
+**What changes.** The step count is `max(10, round(10 * n / 32))` where `n` is the number
+of windows in the budget, so every budget receives ten passes over its own data.
+
+**Why.** 200 steps at batch 32 is 6,400 sample draws whatever the budget. The
+two-minute budget holds about 60 windows, so it received roughly 107 passes; the
+all-available budget holds about 3,000, so it received about two. The budget sweep for
+C2 and D therefore varied data volume and training amount together, and its
+non-monotonicity cannot be attributed to either. The confound was not anticipated by the
+registration.
+
+**Why ten.** The registered 200 steps corresponds to 10.7 passes at the 20-minute
+budget, the middle of the sweep. Fixing ten passes leaves the middle of the sweep close
+to what was registered and changes only the ends, which is the smallest change that
+removes the confound. The floor of ten steps exists so that Adam's moment estimates are
+not evaluated after three updates; it binds at no budget in this sweep.
+
+The registration's intent is preserved. The step count was fixed so that the arms most
+exposed to tuning could not be tuned on results, and scaling it with the size of the
+adaptation block keeps that property, because nothing in the rule consults the test
+block. The value was chosen before any affected run and is not revised afterwards.
+
+`steps`, `epochs` and the number of adaptation windows are recorded on every row.
+
+## Amendment: Arm C2's Learning Rate Is Selected Per Rank, Registered 26 October 2026
+
+**What was registered.** Arm C2 keeps a single learning rate of 1e-3 for every rank.
+
+**What changes.** The rate is selected per rank from the grid `[3e-3, 1e-3, 3e-4, 1e-4]`,
+registered here before selection.
+
+**Why.** One rate covers ranks 1 to 16, which span 2,048 to 32,768 trainable parameters.
+Each rank therefore sits at a different point on its own training curve, so the rank
+sweep is not a controlled sweep over capacity and the extrapolation from it to higher
+ranks is not safe. That extrapolation is currently load bearing: it is the basis for the
+claim that no affordable rank reaches Arm B.
+
+**How, and the one deviation from the brief that prompted this.** The rate is selected
+once per rank on the **held-out tail of the adaptation block** of two subjects, S1 and
+S7, at the all-available budget, by adaptation-block MAE. It is not selected per subject
+or per budget. Selecting per row would multiply the compute by the size of the grid, and
+the precedent set by the Arm D amendment of 29 September is selection on a small number
+of subjects using adaptation-block quantities only. No test-block quantity is consulted
+at any point, which is the property that matters.
+
+The selected rate is recorded on every row.
+
+## Predictions For The Rerun, Registered 26 October 2026
+
+Falsifiable, and registered before the affected runs exist.
+
+1. **Arm C1 stops diverging at middling budgets.** Its worst cell currently reaches
+   33.22 BPM against an unadapted 11.53. With the penalty actually selected, no cell
+   exceeds Arm A by more than 2 BPM at any budget.
+2. **Arm C1's selected penalty moves toward the strong end of the grid as the budget
+   shrinks**, and is no longer the weakest value for every subject at every budget.
+3. **Arm C1 lands within 0.5 BPM of Arm B at all available data** in all four cells.
+4. **Arm C1 does not overtake Arm B.** 513 parameters correctly regularised should
+   approach two parameters, not beat them, because what both arms correct is the same
+   per-person bias.
+5. **Arm C2 improves at every rank** once the loss matches the metric, and reaches but
+   does not clearly beat Arm B.
+6. **Arm D remains at or below Arm A** at every budget.
+7. **No arm's position on the cost axis moves**, since no change here touches a
+   parameter count.
+
+If prediction 3 holds and prediction 4 fails, the central claim of the study weakens:
+the knee in the frontier would sit at 513 parameters rather than two. That outcome is
+recorded here as the one that would cost the most, so that it cannot be reinterpreted
+later.
