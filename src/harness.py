@@ -14,6 +14,7 @@ recorded per row so that a result can be tied to the code that produced it.
 from __future__ import annotations
 
 import csv
+import functools
 import subprocess
 from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime, timezone
@@ -23,8 +24,18 @@ ROOT = Path(__file__).resolve().parent.parent
 EXPERIMENTS = ROOT / "results" / "experiments.csv"
 
 
+@functools.lru_cache(maxsize=1)
 def commit_hash() -> str:
-    """Short hash of the code that produced a row, or 'dirty'/'unknown'."""
+    """Short hash of the code that produced a row, or 'dirty'/'unknown'.
+
+    Cached for the life of the process. A long job appends rows for hours, and
+    reading HEAD per row records whatever was committed by the time that row
+    was written rather than the code that produced it. The Stage 7 rerun of
+    26 October 2026 recorded three different hashes for one run, all of them
+    later than the code actually executing, because commits were being made
+    while it ran. The hash now refers to the process, which is what the
+    provenance claim means.
+    """
     try:
         head = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],

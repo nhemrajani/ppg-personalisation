@@ -24,7 +24,7 @@ from torch import nn
 from src.arms import arm_a
 from src.effective_n import effective_n
 from src.embed import device_name
-from src.harness import Run, append
+from src.harness import Run, append, load
 from src.lora import LoRAConv1d, attach_lora, freeze_except
 from src.papagei import EMBEDDING_DIM, load_backbone
 from src.preprocess import preprocess_subject
@@ -218,7 +218,7 @@ def run_one(subject: int, budget, rank: int | None, protocol: str, index, device
     )
 
 
-def select_rates(index, device, backbone: str) -> dict[int, float]:
+def select_rates(index, device, backbone: str, ranks=None) -> dict[int, float]:
     """One learning rate per rank, chosen on held-out adaptation data only.
 
     Amended 26 October 2026. Scored on the final quarter of the adaptation block
@@ -229,7 +229,7 @@ def select_rates(index, device, backbone: str) -> dict[int, float]:
     print(f"selecting C2's learning rate per rank on S{LR_SELECTION_SUBJECTS}, "
           f"held-out adaptation data only")
     chosen: dict[int, float] = {}
-    for rank in RANKS:
+    for rank in sorted(ranks) if ranks else RANKS:
         scores = {}
         for rate in LR_GRID:
             values = [run_one(s, None, rank, "activity", index, device,
@@ -243,6 +243,23 @@ def select_rates(index, device, backbone: str) -> dict[int, float]:
     return chosen
 
 
+def completed(n_subjects: int) -> set[tuple]:
+    """Configurations already in the record, so a killed job can resume.
+
+    Keyed on backbone, protocol, arm, rank and budget. A configuration counts as
+    done only when every subject is present, so a run interrupted part way
+    through one configuration is redone rather than left short.
+    """
+    counts: dict[tuple, int] = {}
+    for row in load():
+        if row["arm"] not in ("C2", "D"):
+            continue
+        key = (row["backbone"], row["protocol"], row["arm"],
+               row["rank"] or "", row["budget_minutes"] or "")
+        counts[key] = counts.get(key, 0) + 1
+    return {k for k, v in counts.items() if v >= n_subjects}
+
+
 def main() -> None:
     index = load_index()
     device = device_name()
@@ -253,13 +270,31 @@ def main() -> None:
           f"ranks {RANKS}, budgets {BUDGETS}, {EPOCHS} epochs\n")
 
     started = time.time()
+    done = completed(len(subjects))
+    print(f"{len(done)} configurations already in the record; they are skipped\n")
+
     for backbone in backbones:
-        rates = select_rates(index, device, backbone)
+        pending = [
+            (protocol, rank, budget)
+            for protocol in protocols
+            for rank in list(RANKS) + [None]
+            for budget in BUDGETS
+            if (backbone, protocol, "D" if rank is None else "C2",
+                "" if rank is None else str(rank),
+                "" if budget is None else str(budget)) not in done
+        ]
+        if not pending:
+            print(f"{backbone}: nothing left to run\n")
+            continue
+        ranks_needed = {rank for _, rank, _ in pending if rank is not None}
+        rates = select_rates(index, device, backbone, ranks_needed) if ranks_needed else {}
         print()
         for protocol in protocols:
             for rank in list(RANKS) + [None]:
                 label = f"C2 rank {rank}" if rank else "D full fine-tune"
                 for budget in BUDGETS:
+                    if (protocol, rank, budget) not in pending:
+                        continue
                     rows = []
                     for subject in subjects:
                         row = run_one(subject, budget, rank, protocol, index, device,

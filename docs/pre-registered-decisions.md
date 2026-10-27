@@ -561,3 +561,23 @@ chosen at the all-available budget need not be right at a two-minute one. The co
 argument for selecting this way stands, roughly twenty hours against sixty-five, and no
 test-block quantity is consulted at any point. Recorded as a limitation of the trained
 arms rather than corrected.
+
+## Record Integrity Note: Commit Provenance On The Stage 7 Rerun, 27 October 2026
+
+The repository conventions state that every row carries the commit hash of the code that
+produced it. For the Stage 7 rerun launched on 26 October that is **not true**, and the
+rows are being corrected rather than left to be read as accurate.
+
+`commit_hash()` read `git HEAD` once per row. The rerun appends rows for about four
+hours, and commits were made during it, so its rows carry three different hashes
+(`e669da3`, `ac61595`, `83e54da`), most suffixed `-dirty`, all of them **later** than the
+code executing. The running process loaded its modules at launch and was unaffected by
+the edits, so the numbers are sound; only the provenance field is wrong.
+
+The code that produced every row of that run is the working tree at **`3111aed`**, the
+state at launch. The affected rows' commit field is corrected to `3111aed` once the run
+finishes, with a note recording the correction, because the file cannot be rewritten
+while a job is appending to it.
+
+**Prevented from recurring:** `commit_hash()` is now cached for the life of the process,
+so a hash refers to the run rather than to whenever a row happened to be written.
