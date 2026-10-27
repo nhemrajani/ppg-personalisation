@@ -25,6 +25,7 @@ from src.arms import arm_a
 from src.effective_n import effective_n
 from src.embed import device_name
 from src.harness import Run, append, load
+from src.provenance import acceptable, exec_digest
 from src.lora import LoRAConv1d, attach_lora, freeze_except
 from src.papagei import EMBEDDING_DIM, load_backbone
 from src.preprocess import preprocess_subject
@@ -210,6 +211,7 @@ def run_one(subject: int, budget, rank: int | None, protocol: str, index, device
             "steps": steps, "epochs": EPOCHS, "n_adapt_windows": int(len(rows)),
             "effective_n": effective_n(index["start_second"][chunk]),
             "lr": rate, "loss": "l1", "layer": TARGET_LAYER,
+            "src_digest": exec_digest("stage7"),
             "adapt_mae_before": round(before_mae, 3), "adapt_mae_after": round(after_mae, 3),
             "adapt_mse_before": round(before_mse, 1), "adapt_mse_after": round(after_mse, 1),
             "loss_trace": trace, "selection_mode": select,
@@ -246,17 +248,33 @@ def select_rates(index, device, backbone: str, ranks=None) -> dict[int, float]:
 def completed(n_subjects: int) -> set[tuple]:
     """Configurations already in the record, so a killed job can resume.
 
-    Keyed on backbone, protocol, arm, rank and budget. A configuration counts as
-    done only when every subject is present, so a run interrupted part way
-    through one configuration is redone rather than left short.
+    Keyed on backbone, protocol, arm, rank and budget. Two rules, both mechanical
+    rather than left to be judged when a job dies at three in the morning:
+
+    1. A configuration counts as done only when **every** subject is present, so
+       an interruption part way through one configuration redoes it whole.
+    2. Every one of its rows must carry the current executing-path digest, or a
+       token explicitly recorded as verified equivalent in `src/provenance.py`.
+       If the arithmetic changed, the configuration is rerun whole even though it
+       is complete.
     """
+    digest = exec_digest("stage7")
     counts: dict[tuple, int] = {}
+    rejected: dict[tuple, set[str]] = {}
     for row in load():
         if row["arm"] not in ("C2", "D"):
             continue
         key = (row["backbone"], row["protocol"], row["arm"],
                row["rank"] or "", row["budget_minutes"] or "")
-        counts[key] = counts.get(key, 0) + 1
+        token = row["src_digest"] if row.get("src_digest") else row["commit"]
+        if acceptable("stage7", token, row.get("timestamp", "")):
+            counts[key] = counts.get(key, 0) + 1
+        else:
+            rejected.setdefault(key, set()).add(token)
+
+    for key, tokens in sorted(rejected.items()):
+        print(f"  rerunning {key} whole: rows from {sorted(tokens)} do not match "
+              f"the current path {digest}")
     return {k for k, v in counts.items() if v >= n_subjects}
 
 

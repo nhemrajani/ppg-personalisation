@@ -19,6 +19,7 @@ import numpy as np
 from src.arms import SHRINKAGE_B, arm_a, arm_b_offset, arm_b_ridge, check_degenerate
 from src.effective_n import effective_n
 from src.harness import EXPERIMENTS, Run, append, load
+from src.provenance import exec_digest
 from src.ridge import mae, pearson, rmse
 from src.splits import budget_prefix, load_index, make_split
 from src.stage4 import embeddings
@@ -54,6 +55,7 @@ def main() -> None:
                         extra = dict(fitted.extra or {})
                         extra["effective_n"] = effective_n(starts[chunk])
                         extra["n_windows"] = int(len(chunk))
+                        extra["src_digest"] = exec_digest("stage9")
                         if name == "B-ridge" and isinstance(extra.get("shrinkage_b"), float):
                             picked[(backbone, protocol, budget)].append(extra["shrinkage_b"])
                         rows.append(Run(
