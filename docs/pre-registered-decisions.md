@@ -1120,7 +1120,7 @@ Mean per-subject MAE at all available personal data, activity-stratified:
    the scale down while the correlation's pushes it up, and on temporal the first is
    larger. **The diagnostic is the pair, not its product.** Measured as the distance of
    `(r, spread ratio)` from `(1, 1)`, the ordering is monotone in backbone quality in both
-   protocols: 0.400, 0.364, 0.277 on activity and 0.454, 0.400, 0.274 on temporal. The
+   protocols: 0.400, 0.364, 0.277 on activity and 0.453, 0.400, 0.274 on temporal. The
    prediction should have been registered on the pair, and is restated that way for any
    future backbone.
 5. **Arm B still beats Arm C1: failed on the point estimate, not detectably.** This was

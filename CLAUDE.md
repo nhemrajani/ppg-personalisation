@@ -609,7 +609,7 @@ moves toward 1 on activity, 0.689 to 0.736, and **away from it on temporal**, 0.
 from 1.264 to 1.137, and since that ratio sits above 1 its improvement pulls the scale
 down while the correlation's pushes it up. The diagnostic is the pair, not its product.
 Measured as the distance of `(r, spread ratio)` from `(1, 1)` it is monotone in backbone
-quality in both protocols: 0.400, 0.364, 0.277 and 0.454, 0.400, 0.274.
+quality in both protocols: 0.400, 0.364, 0.277 and 0.453, 0.400, 0.274.
 
 **Environment note.** `momentfm` pins numpy 1.25.2, huggingface-hub 0.24.0 and transformers
 4.33.3, none installable beside the pinned pyPPG and biobss, so MOMENT lives in
