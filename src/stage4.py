@@ -46,11 +46,20 @@ PAPAGEI_ALPHAS = np.array([0.1, 1.0, 10.0, 100.0])
 OUR_ALPHAS = np.logspace(-3, 6, 10)
 PAPAGEI_FOLDS = 4
 OUR_FOLDS = 7
-PUBLISHED = {"s": 11.53, "p": 10.92}
+PUBLISHED = {"s": 11.53, "p": 10.92, "moment": 8.82}  # MOMENT from PaPaGei's own comparison table
 PUBLISHED_INTERVAL = {"s": (11.40, 11.66), "p": (10.80, 11.04)}
 
 
-def embeddings(backbone: str, polarity: str) -> np.ndarray:
+def embeddings(backbone: str, polarity: str = "asis") -> np.ndarray:
+    """One cached table, memory-mapped. 'moment' is the 1,024-wide fourth table.
+
+    MOMENT is embedded in one polarity only, registered 3 November 2026, so a
+    request for its flipped table is a mistake rather than a missing file.
+    """
+    if backbone == "moment":
+        if polarity != "asis":
+            raise ValueError("MOMENT is embedded in the 'asis' polarity only")
+        return np.load(EMBEDDINGS / "moment_asis.npy", mmap_mode="r")
     return np.load(EMBEDDINGS / f"papagei_{backbone}_{polarity}.npy", mmap_mode="r")
 
 
