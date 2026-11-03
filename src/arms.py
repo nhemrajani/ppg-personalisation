@@ -126,7 +126,12 @@ def arm_b2(x, y, split, subject, budget: np.ndarray, base: Fitted, passes: int =
 
 
 def arm_c1(x, y, split, subject, budget: np.ndarray, base: Fitted, warm: bool = True) -> Fitted:
-    """A per-person output layer: 512 weights and one bias.
+    """A per-person output layer: one weight per embedding dimension, plus a bias.
+
+    The cost is derived from the embedding width rather than hardcoded, so that a
+    backbone of a different width is priced correctly. On PaPaGei's 512 dimensions
+    this is 513 parameters and 2,052 bytes, which is what every row written before
+    3 November 2026 carries; MOMENT's 1,024 dimensions cost 1,025 and 4,100.
 
     Warm-started, the solution is pulled toward the population solution, so at
     strong shrinkage it is the population model exactly. From scratch, it is an
@@ -138,7 +143,8 @@ def arm_c1(x, y, split, subject, budget: np.ndarray, base: Fitted, warm: bool = 
     _, _, x_test = _prepare(x, split)
 
     if len(budget) < 2:
-        return Fitted(base.predictions, 513, 2052, base.alpha,
+        cost = x.shape[1] + 1
+        return Fitted(base.predictions, cost, cost * 4, base.alpha,
                       {"shrinkage": "degenerate", "n_fit": 0, "n_validation": 0})
 
     population = GramRidge(x_pop, y_pop)
@@ -181,7 +187,8 @@ def arm_c1(x, y, split, subject, budget: np.ndarray, base: Fitted, warm: bool = 
     centre = x_adapt - population.x_mean
     best = solve(centre.T @ centre, centre.T @ (y_adapt - b_pop), selected)
 
-    return Fitted((x_test - population.x_mean) @ best + b_pop, 513, 2052, base.alpha,
+    return Fitted((x_test - population.x_mean) @ best + b_pop, size + 1, (size + 1) * 4,
+                  base.alpha,
                   {"warm": warm, "shrinkage": float(selected),
                    "shrinkage_index": int(np.argmin(np.abs(SHRINKAGE - selected))),
                    "n_fit": int(len(fit_x)), "n_validation": int(len(val_x))})

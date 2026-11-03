@@ -26,3 +26,7 @@ log/*.md
 # Exception: a 15 KB summary, not bulk data. Committing it means
 # figures/gate2_polarity.png regenerates without the 20 GB dataset.
 !results/beat_triggered_average.npz
+
+# MOMENT extraction runs in its own environment: momentfm pulls a transformers
+# stack that must not be allowed near the pinned pyPPG/biobss install.
+venv-moment/

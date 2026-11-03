@@ -962,3 +962,97 @@ are temporal prefixes, so the first minutes are sitting still and the mean estim
 is not the test block's mean. Arm Z1 has no encoder, no probe and no slope to extrapolate,
 so composition is the only available explanation. **The cold-start problem is now
 demonstrated on an arm that cannot have any other cause.**
+
+## The MOMENT Backbone: Two Checks, Then The Registration, 3 November 2026
+
+The objection the floor baselines create is that the estimator is weak, so of course cheap
+corrections beat capacity. Published purpose-built methods reach 4 to 8 BPM on PPG-DaLiA
+and this study sits at 11 to 13, because linear probing is a representation benchmark and
+not an estimator. A stronger backbone is the test of whether the finding survives, and
+MOMENT at a reported 8.82 is the strongest frozen probe in the reference table.
+
+Two things were checked before any code was written, as required.
+
+### Check 1: MOMENT's input-length convention against the 1,250-sample windows
+
+**Settled empirically, and the answer is not the one the configuration implies.**
+`MOMENT-1-large` reports `seq_len = 512`, `patch_len = 8`, `patch_stride_len = 8` and
+`d_model = 1024`. Feeding it PaPaGei's 1,250-sample zero-padded windows nonetheless runs
+without error and returns finite embeddings of width 1,024, because the embedding path
+takes its patch count from the tensor rather than the configuration.
+
+It also **reads the whole window rather than truncating to its context**, which is the
+part that mattered and could not be read off the source. Two inputs identical in their
+first 512 samples and random thereafter give embeddings that differ by 0.036, and a single
+spike placed at sample 1248, 1249 or 1250 moves the embedding by 0.07 to 0.10. Had the
+embeddings matched, PaPaGei's MOMENT baseline would have been computed on 4.1 of every 8
+seconds and the reference figure would have needed re-reading.
+
+**Caveat to carry into the paper.** MOMENT is therefore being run at 2.4 times its
+pre-training context, 1,250 samples against 512, and its revolution-invariant
+normalisation sees the 125 leading and 125 trailing zeros as real data because `input_mask`
+defaults to all ones. Both are PaPaGei's choices, not ours, and matching them is what makes
+the comparison to 8.82 like for like. Some of MOMENT's accuracy may be left on the table
+by them. **The standing rule applies: this is reported, not fixed.** A 512-sample variant
+is a clearly labelled extension if it is wanted, never a change to the reproduction.
+
+**Embedding width differs, 1,024 against PaPaGei's 512.** Arm C1's per-person cost was
+hardcoded at 513 parameters and 2,052 bytes and now derives from the embedding width, so
+MOMENT's Arm C1 is correctly priced at 1,025 and 4,100. Asserted to still return exactly
+513 and 2,052 on 512 dimensions, so no row written before today changes.
+
+### Check 2: how the reference figure of 8.82 was produced
+
+**By PaPaGei themselves, with their own probe.** Their repository contains
+`linearprobing/feature_extraction_moment.py`, which loads `AutonLab/MOMENT-1-large` with
+`task_name="embedding"`, feeds the same stored segments with no resampling or truncation,
+and takes `model(x).embeddings`. The downstream fit is their own `regression.py` and
+`outcome_regression_all.py`, the same code path that produced 11.53 and 10.92.
+
+So the protocol to match is not invented, it is the one already implemented in
+`src/stage4.py`: the 60/20/20 subject split over all 455 test triples, `StandardScaler`
+fitted on train, `GridSearchCV` with `cv=4` plain k-fold and `scoring='neg_mean_squared_error'`,
+and the alpha grid exactly `[0.1, 1.0, 10.0, 100.0]`. MOMENT enters as a fourth embedding
+table and nothing downstream changes.
+
+### What transfers, and what does not
+
+Arms A, B, B-offset, B-ridge, B2, C1, Z0 and Z1 are arithmetic on a cached embedding table
+and do not know which encoder produced it. Arms C2 and D are architecture-specific and are
+**not** run on MOMENT; the cost axis there would not be comparable in any case.
+
+**One polarity only, `asis`.** The flipped table exists for PaPaGei because the two
+checkpoints differ in sign invariance, which is a PaPaGei-specific control for Sub
+Question 3. It answers no registered question about MOMENT and would double the most
+expensive step in the study, so it is not computed. Stated rather than silently skipped.
+
+### Predictions, registered before MOMENT is embedded
+
+1. **MOMENT's Arm A beats PaPaGei-P's Arm A** on the leave-one-subject-out protocol, since
+   it beats it by 2.1 BPM on PaPaGei's own fixed-split probe.
+2. **Arm B's gain over Arm A shrinks as the backbone improves.** What Arm B corrects is a
+   per-person bias and a better representation should leave less of it. Three points
+   ordered by baseline quality, Arm A at 13.14 for PaPaGei-S, 11.72 for PaPaGei-P and an
+   expected 9 to 11 for MOMENT, against Arm B gains of +2.98 and +2.08. This predicts a
+   MOMENT gain **below +2.08**.
+3. **The gap between Arm Z1 and Arm A widens on MOMENT**, because a better model should
+   beat the person's own average by more than a worse one. Arm Z1 is 14.24 on p/activity
+   and does not depend on the backbone at all, so this is a prediction purely about Arm A.
+   Against +2.52 on PaPaGei-P, this predicts **more than +2.52** on MOMENT.
+4. **Arm B's fitted scale moves closer to 1 on MOMENT.** Now stated with its mechanism,
+   which the decomposition of 3 November supplies: the scale is exactly
+   `r * sd(truth) / sd(prediction)`, so it can only approach 1 if the correlation does.
+   The mean adaptation-block correlation at all available data is 0.650 on PaPaGei-P, and
+   this predicts **above 0.650 on MOMENT**, carrying the scale up with it. This is the
+   sharpest prediction available, because it turns the scale distribution from an awkward
+   detail into a diagnostic of backbone quality.
+5. **Arm B still beats Arm C1 at all available data.** The study's central claim is that
+   two stored values are not beaten by 513. If a better representation reverses that, the
+   knee moves and the headline changes.
+
+Predictions 2 and 3 pull in opposite directions on purpose and both can hold: Arm B's
+gain over Arm A can shrink while Arm A's gain over a constant grows, since the first is
+about residual bias and the second about representation quality.
+
+**Prediction 5 is the one whose failure would be most expensive**, and prediction 4 the
+one whose success would most strengthen the paper.
