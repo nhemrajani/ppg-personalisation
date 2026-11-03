@@ -896,3 +896,69 @@ the string it was read from.
 
 Prediction 3 is the one whose failure would be most expensive, and prediction 2 is the one
 whose success would most change the paper. Both are recorded here with the arms unfitted.
+
+## Outcome Of The Floor Baselines, Recorded 3 November 2026
+
+420 rows, `python -m src.stage10`, 0.1 seconds, commit `aad675c` on a clean tree. The
+registered assertions pass for all fifteen subjects in both protocols: both arms are
+constant across the test block, each equals the mean of the rows it is entitled to see,
+each is priced at the registered cost, and Arm Z1 with an empty budget reduces to Arm Z0
+exactly. Both floors are also identical across the two backbones in all 210 cells, as
+they must be, since neither reads an embedding.
+
+**Five of the six predictions held. The one that failed, failed in the direction that
+favours the model.**
+
+Mean per-subject MAE at all available personal data:
+
+| Arm | p/activity | p/temporal | s/activity | s/temporal |
+| --- | --- | --- | --- | --- |
+| Z0, global constant | 19.35 | 16.27 | 19.35 | 16.27 |
+| Z1, per-person constant | 14.24 | 11.83 | 14.24 | 11.83 |
+| A, population model | 11.72 | 10.36 | 13.14 | 11.53 |
+| B, affine | 9.65 | 8.86 | 10.16 | 9.35 |
+
+1. **Arm Z1 lands between Arm A and Arm B, closer to Arm A: failed.** Z1 is 14.24 on
+   p/activity, which is 2.52 BPM **worse** than Arm A rather than between it and Arm B.
+   The registered range was 10.5 to 11.7 and the answer is outside it in the direction
+   that makes the foundation model look better. The error came from estimating the floor
+   as a person's mean heart rate; what Arm Z1 actually has is an *estimate* of that mean
+   taken from an earlier and differently composed stretch of the same recording, which is
+   the honest version and is worse.
+2. **If Arm Z1 beats Arm A, the frozen probe contributes nothing: antecedent false.** Arm
+   A is better than Arm Z1 in all four cells on the point estimate, so the headline does
+   not have to move. It must be stated with its qualification, below.
+3. **Arm B still beats Arm Z1: held**, detectably in all four cells, by 2.49 to 4.59 BPM,
+   better on 13 to 15 of 15 subjects. This was the prediction whose failure would have
+   been most expensive and it held with room to spare.
+4. **Arm Z0 is worse than Arm A in all four cells: held**, detectably, by 4.74 to 7.62.
+5. **Arm Z1 beats Arm Z0 at all available data in all four cells: held**, detectably, by
+   4.44 to 5.10.
+6. **Arm Z1 is worse than Arm A at the two smallest budgets: held**, detectably in all
+   four cells at both 2 and 5 minutes, by 6.47 to 16.19 BPM.
+
+### The qualification that has to travel with prediction 2
+
+Arm A beats Arm Z1 in all four cells, but **detectably in only one of them**: +2.52
+[+0.05, +4.84] on p/activity, against +1.48, +1.11 and +0.30 elsewhere with intervals
+spanning zero. On PaPaGei-S under naive temporal splitting the frozen probe is 0.30 BPM
+better than predicting the person's own average, which is nothing.
+
+So the floor does not overturn the study, and it does sharply reduce what the probe can
+be said to contribute on its own. The defensible sentence is that a frozen PaPaGei
+embedding with a ridge probe beats a per-person constant by 0.3 to 2.5 BPM depending on
+backbone and protocol, detectably in one of four cells, while the same embedding plus two
+stored values beats that constant by 2.5 to 4.6 BPM detectably in all four. **The
+adaptation is doing more of the work than the representation is**, and that is a finding
+the study is now equipped to state rather than an objection it has to absorb.
+
+### Arm Z1 confirms the compositional explanation, with no model to blame
+
+Arm Z1's budget curve on p/activity runs 26.11, 27.91, 15.23, 14.90, 14.80, 14.24. At two
+and five minutes a one-parameter arm carrying no model output at all is 12 to 16 BPM worse
+than doing nothing, and five minutes is worse than two. That is the same shape every
+adaptive arm shows at small budgets, and CLAUDE.md attributes it to composition: budgets
+are temporal prefixes, so the first minutes are sitting still and the mean estimated there
+is not the test block's mean. Arm Z1 has no encoder, no probe and no slope to extrapolate,
+so composition is the only available explanation. **The cold-start problem is now
+demonstrated on an arm that cannot have any other cause.**

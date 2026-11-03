@@ -421,6 +421,8 @@ per-subject differences against Arm A, 5,000-resample bootstrap intervals.
 
 | Arm | Trainable | Stored | User labels | MAE | vs A | 95% interval |
 | --- | --- | --- | --- | --- | --- | --- |
+| Z0, global constant | 0 | 0 | none | 19.35 | -7.62 | [-9.82, -5.47] |
+| Z1, per-person constant | 1 | 4 B | yes | 14.24 | -2.52 | [-4.84, -0.05] |
 | A, population model | 0 | 0 | none | 11.72 | | |
 | **B-offset, offset only** | **1** | **4 B** | yes | 10.22 | +1.50 | [+0.63, +2.54] |
 | **B, affine** | **2** | **8 B** | yes | **9.65** | **+2.08** | **[+1.03, +3.33]** |
@@ -432,6 +434,90 @@ per-subject differences against Arm A, 5,000-resample bootstrap intervals.
 | C2 rank 8 | 16,384 | 64 KB | yes | 9.88 | +1.84 | [+0.35, +3.64] |
 | C2 rank 16 | 32,768 | 128 KB | yes | 9.69 | +2.04 | [+0.62, +3.76] |
 | D, full fine-tuning | 4,993,024 | 20 MB | yes | 10.77 | +0.96 | [-0.54, +2.71] |
+
+### Gate 7a — The floor baselines
+**Status: passed 3 November 2026.** `python -m src.stage10`, 420 rows, 0.1 seconds.
+`python -m src.floors` for the comparison, `python -m src.scale_mechanism` for the
+decomposition below.
+
+**The study had no floor, and adding one moves the headline.** Six adaptation methods had
+been measured against the frozen population model and against each other, never against
+not having a model. Two closed-form arms fix that. **Arm Z0** predicts the population's
+mean heart rate for every window: zero parameters, the know-nothing floor. **Arm Z1**
+predicts the target's own mean over its budget: one parameter and four bytes, which is
+exactly Arm B-offset's price, with the model never consulted. Neither reads an embedding,
+so both are identical across backbones, asserted in all 210 cells.
+
+| Arm | p/activity | p/temporal | s/activity | s/temporal |
+| --- | --- | --- | --- | --- |
+| Z0, global constant | 19.35 | 16.27 | 19.35 | 16.27 |
+| Z1, per-person constant | 14.24 | 11.83 | 14.24 | 11.83 |
+| A, population model | 11.72 | 10.36 | 13.14 | 11.53 |
+| B, affine | 9.65 | 8.86 | 10.16 | 9.35 |
+
+**The frozen probe beats a per-person constant by 0.3 to 2.5 BPM, detectably in one cell
+of four.** Arm A over Arm Z1 is +2.52 [+0.05, +4.84] on p/activity, then +1.48, +1.11 and
++0.30 with intervals spanning zero. On PaPaGei-S with naive temporal splitting the probe
+is 0.30 BPM better than predicting the person's own average, which is nothing. **Arm B
+over Arm Z1 is +2.49 to +4.59, detectably in all four cells**, better on 13 to 15 of 15
+subjects.
+
+So the honest headline is that **the adaptation does more of the work than the
+representation does**. That is a sharper claim than the study was making, not a weaker
+one, and it is the sentence a reviewer would otherwise derive unaided. Report it with the
+qualification attached: Arm A does win in all four cells on the point estimate, so the
+probe is not contributing nothing, it is contributing less than two stored values do.
+
+**Arm Z1 proves the cold-start problem is compositional, with no model to blame.** Its
+budget curve on p/activity is 26.11, 27.91, 15.23, 14.90, 14.80, 14.24. A one-parameter
+arm carrying no model output is 12 to 16 BPM worse than doing nothing at two and five
+minutes, and five minutes is worse than two, which is the shape every adaptive arm shows.
+Arm Z1 has no encoder, no probe and no slope that could extrapolate, so composition is
+the only available cause. The explanation CLAUDE.md has carried since Gate 6 is now
+demonstrated rather than inferred.
+
+**Arm B's low fitted scale is least squares diagnosing the model, not discarding it.**
+The scale averages 0.777 over the four cells at all available data and falls to 0.207 on
+S5, where the offset reaches +104 BPM, which reads as the correction throwing the
+prediction away and substituting a constant. It is not. Arm B's scale is OLS, and OLS has
+a closed form:
+
+    scale = r * sd(truth) / sd(prediction)
+
+verified to at worst 2.0e-15 in all 24 cell-budget combinations by
+`src/scale_mechanism.py`. At all available data on p/activity the mean adaptation-block
+correlation is 0.650 and the mean spread ratio 1.100, and the per-subject products average
+0.689: **a scale near the correlation is the optimal amount of shrinkage for a predictor
+that explains about 42 per cent of the variance.** S5's 0.207 is 0.132 x 1.567, so its
+scale is low because the model's correlation with S5's heart rate is 0.13. A low scale is
+a measurement of the model failing on that person, correctly made by least squares. Arm Z1
+is what discarding the model actually looks like, and it is 4.59 BPM worse.
+
+**Which factor moves is the answer to Arm B's cold start.** The correlation is stable
+across the whole sweep, 0.51 to 0.77 in every cell and budget. The scale's swings are
+almost entirely the spread ratio, and the spread ratio is composition. On p/activity it
+runs 0.672, 0.589, 1.432, 1.301, 1.165, 1.100 across the budgets, so the scale runs 0.437,
+0.370, 1.090, 0.940, 0.772, 0.689. At two minutes the subject is sitting still, so the
+truth barely varies while the model's predictions still move, the ratio falls below 1, and
+least squares correctly concludes that most of the model's variation is noise **on that
+window** and shrinks the slope to 0.44. The conclusion is right about the window and wrong
+about the test block, where the truth does vary. That is the complete mechanism behind
+Arm B's +7.83 worst-case excess, and it is exactly what Arm B-offset escapes by having no
+slope to shrink.
+
+This also makes a quantitative prediction for any better backbone: the scale can only
+approach 1 if the correlation does, so **the fitted scale is a diagnostic of backbone
+quality** rather than an awkward detail.
+
+**One reading withdrawn.** It was argued from the record that Arm B leaves the
+prediction-truth correlation essentially unchanged, 0.617 against Arm A's 0.626, and that
+this is not what a real improvement looks like. Arm B's prediction is a positive affine
+map of Arm A's, and Pearson's r is invariant under one, so **Arm B cannot change the
+correlation whatever it does to the error**: paired by subject and cell, the largest
+difference across all 1,080 rows of Arms B, B-offset and B-ridge is exactly 0.000000. The
+quoted gap came from averaging Arm B's 360 rows against Arm A's 120. Correlation is
+structurally blind to this whole class of corrections, which is why the floor baseline was
+needed to answer the question instead.
 
 **The answer to the main research question survives, and in a better form.** It is no
 longer that costlier adaptation fails. It is that costlier adaptation **works and still
