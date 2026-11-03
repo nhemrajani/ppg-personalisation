@@ -96,9 +96,13 @@ def population_curve() -> None:
         ax.axhline(means[-1], color=colour, ls=":", lw=0.8)
     ax.set_xlabel("population subjects used to fit the model")
     ax.set_ylabel("mean per-subject MAE (BPM)")
-    ax.text(0.98, 0.95, "error bars: standard error of the mean\nacross subjects and draws",
-            transform=ax.transAxes, ha="right", va="top", fontsize=8, color="#555")
-    ax.set_title("Beyond about six subjects, more population data buys little")
+    ax.text(0.98, 0.95, "error bars: standard error of the mean across subjects and draws.\n"
+            "Sizes below 14 average 25 draws; 14 is deterministic, one value per\n"
+            "subject, so its bar is not comparable to the others.",
+            transform=ax.transAxes, ha="right", va="top", fontsize=7.5, color="#555")
+    # The earlier title said six, which the 25-draw rerun withdrew: six against
+    # fourteen is +0.604 BPM paired, worse with six on 15 of 15 subjects.
+    ax.set_title("Returns flatten nearer ten to twelve subjects than six", fontsize=11)
     ax.legend()
     fig.tight_layout()
     fig.savefig(FIGURES / "gate4_population_curve.png", dpi=150)
