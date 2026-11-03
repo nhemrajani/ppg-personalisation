@@ -124,7 +124,7 @@ def cost_accuracy(table, backbones) -> None:
             fx, fy = zip(*frontier)
             ax.step(list(fx) + [2e7], list(fy) + [fy[-1]], where="post",
                     color="#b23a48", lw=1.3, ls="--", alpha=0.65, zorder=1,
-                    label="Pareto frontier (flat: nothing costlier beats it)")
+                    label="Pareto frontier (point estimates)")
 
         for arm, style, note in (("Z0", (0, (1, 2)), "knowing nothing"),
                                  ("Z1", (0, (4, 2)), "knowing only the person's own mean")):
@@ -146,14 +146,31 @@ def cost_accuracy(table, backbones) -> None:
         ax.set_xticklabels(["0", "1", "10", "100", "1k", "10k", "100k", "1M", "10M"])
         ax.set_xlabel("trainable parameters per person  (log scale; 0 in its own strip)")
         ax.set_ylabel("mean per-subject MAE (BPM)")
-        knee = series(table, "B", backbone, PROTOCOL, "")
+        # The caption states where the frontier's last step is rather than
+        # asserting a fixed claim. On PaPaGei that step is at two parameters; on
+        # MOMENT it is not, and a caption that said otherwise would be a figure
+        # contradicting its own data.
+        last_cost, last_value, last_arm = 0, np.inf, "A"
+        for cost, _x, value, arm, _name, _colour, _dy in ordered:
+            if value < last_value - 1e-12:
+                last_cost, last_value, last_arm = cost, value, arm
+        dearest = max(cost for cost, *_ in points)
+        reach = ("one parameter" if last_cost == 1 else
+                 "no per-person parameters" if last_cost == 0 else
+                 f"{last_cost:,} parameters")
+        beyond = (f"which is the costliest arm run on this backbone"
+                  if last_cost >= dearest else
+                  f"and nothing costlier, up to {dearest:,}, improves on it")
+        # The staircase is drawn from point estimates, so it can step on a
+        # difference the intervals do not resolve. Said here rather than left
+        # for the reader to assume otherwise.
         caption(ax, f"{pretty}, activity-stratified, all available personal data",
-                f"Two stored values reach {knee.mean():.2f} BPM, and the frontier is "
-                f"flat from there to five million parameters. Bars are 95 per cent "
+                f"The frontier's last step is at {reach}, Arm {last_arm} at "
+                f"{last_value:.2f} BPM, {beyond}. The staircase ranks point estimates, "
+                f"so a step need not be a detectable difference. Bars are 95 per cent "
                 f"paired bootstrap intervals on each arm's difference from Arm A, so "
-                f"Arm A itself carries none. Arms of equal cost are nudged apart to "
-                f"separate them; each sits under its true cost."
-                if knee is not None else "")
+                f"Arm A itself carries none; arms of equal cost are nudged apart to "
+                f"separate them, each under its true cost.")
         ax.grid(axis="y", alpha=0.25)
         ax.legend(fontsize=8, loc="upper right")
 
