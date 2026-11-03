@@ -47,7 +47,7 @@ OUR_ALPHAS = np.logspace(-3, 6, 10)
 PAPAGEI_FOLDS = 4
 OUR_FOLDS = 7
 PUBLISHED = {"s": 11.53, "p": 10.92, "moment": 8.82}  # MOMENT from PaPaGei's own comparison table
-PUBLISHED_INTERVAL = {"s": (11.40, 11.66), "p": (10.80, 11.04)}
+PUBLISHED_INTERVAL = {"s": (11.40, 11.66), "p": (10.80, 11.04), "moment": (8.68, 8.96)}
 
 
 def embeddings(backbone: str, polarity: str = "asis") -> np.ndarray:
