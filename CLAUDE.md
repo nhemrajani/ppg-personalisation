@@ -618,6 +618,81 @@ re-derived index is asserted equal to Gate 3's on all four keys. Arm C1's per-pe
 was hardcoded at 513 and now derives from the embedding width, so MOMENT prices at 1,025;
 asserted to still return exactly 513 on 512 dimensions, so no earlier row changes.
 
+### Gate 7c — The prediction task, and the knee moves again
+**Status: passed 3 November 2026.** `python -m src.predict 60,120 temporal,activity`,
+1,380 rows, 401 s, PaPaGei-P. Target is `hr[t+H] - hr[t]` for H in {60, 120}. Arms:
+persistence, Z1, A, B, B-offset, C1, all closed form. The leakage assertion passes for
+every adaptation window of every subject in every cell.
+
+**Mean absolute change in heart rate is 7.66 BPM over 60 s and 9.66 over 120 s.** Every
+figure below is read against those.
+
+**Nothing beats persistence by a usable margin.** Mean per-subject MAE on the change, all
+available data:
+
+| Arm | temporal H=60 | temporal H=120 | activity H=60 | activity H=120 |
+| --- | --- | --- | --- | --- |
+| persistence | 6.30 | 7.23 | 6.32 | 5.94 |
+| A | 6.26 | 7.20 | 6.27 | 5.88 |
+| Z1 | 6.32 | 7.33 | 6.32 | 6.05 |
+| B-offset | 6.28 | 7.30 | 6.27 | 5.98 |
+| B | 6.34 | 7.56 | 6.28 | 6.04 |
+| C1 | 6.27 | 7.23 | 6.27 | 5.95 |
+
+The best margin over predicting no change is **+0.05 BPM, which is 0.5 per cent of the
+quantity**. Arm A's advantage is detectable at H=60, +0.039 [+0.015, +0.061] and +0.045
+[+0.023, +0.065], and not at H=120. **Statistically detectable and practically nil**, and
+the paper should give both halves. A frozen PPG representation of one 8-second window
+carries essentially nothing about where heart rate goes over the next one to two minutes.
+
+**Arm B is actively harmful here.** It is worse than Arm A in all four cells and
+detectably worse than doing nothing at temporal H=120, -0.325 [-0.483, -0.174], better on
+2 of 15 subjects. A level has a persistent per-person bias for an affine map to recover
+and a change does not, so the correction is fitted on a window whose mean change is not
+the test block's and contributes only its own estimation error.
+
+**The frontier's knee is task-dependent, now measured.** Arm C1 beats Arm B in all four
+cells, +0.075 [+0.021, +0.147], +0.331 [+0.202, +0.465], +0.011 and +0.092, detectable in
+both temporal cells. On estimation Arm B beats Arm C1. Set beside Gate 7b:
+
+| Condition | Arm B vs Arm C1 |
+| --- | --- |
+| estimation, PaPaGei-S | B better by 1.95, detectable |
+| estimation, PaPaGei-P | B better by 0.44 |
+| estimation, MOMENT | C1 better by 0.25, not detectable |
+| prediction, PaPaGei-P, temporal H=120 | **C1 better by 0.331, detectable** |
+
+**Two stored values win on an easy task with a weak representation and lose on a hard task
+or a strong one.** That is the study's central claim with its conditions attached, and it
+is better supported than the unconditional version it replaces.
+
+**The data cost, which changed the design before anything ran.** The activity protocol has
+sixteen runs per subject and each pays the horizon twice, in its own widened buffer and at
+its trailing edge, so it loses **21.3 per cent of windows at H=60 and 41.4 at H=120**
+against the temporal protocol's 1.4 and 2.8. Two consequences, both registered in advance:
+
+- **The budget sweep is truncated on the activity protocol.** S6 has 27.0 usable
+  adaptation minutes at H=60 and 17.5 at H=120 against 40.8 at H=0, so activity H=60 runs
+  to 20 minutes and activity H=120 to 10.
+- **The activity protocol stops being representative at H=120.** Long sedentary runs
+  survive the horizon and short active ones do not: transient falls 25.8 to 6.6 per cent
+  and **cycling 5.3 to 0.1**, while lunch rises 21.9 to 36.4 and working 13.6 to 24.3.
+  Its persistence figure of 5.94 is the lowest of any cell precisely because the surviving
+  population is sedentary. **Reportable, not primary, and no cross-cell comparison should
+  be drawn from it.**
+
+**For the prediction task only, the temporal protocol is primary**, which inverts the
+estimation task's priority and must be said wherever the two are compared. Neither
+protocol is clean at a horizon: the activity one changes which windows exist, which no
+analysis can correct, while the temporal one carries the activity confound it already
+has. Activity stratification is fifteen times more expensive on a prediction task, which
+belongs in the methods for anyone doing per-person prediction on this kind of dataset.
+
+**Caveat.** The arms see only the current window's embedding. A forecaster given the
+recent heart-rate trajectory or the accelerometer would be a different and much stronger
+baseline and nothing here speaks to it. What is tested is whether a frozen PPG
+representation plus per-person adaptation predicts change, and it does not.
+
 **The answer to the main research question survives, and in a better form.** It is no
 longer that costlier adaptation fails. It is that costlier adaptation **works and still
 does not beat two parameters**. Paired per-subject, at all available data:
