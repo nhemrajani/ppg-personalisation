@@ -787,3 +787,112 @@ than a non-result.
 after the guard reported that no rate reduced training error on both selection subjects,
 and s/temporal is the single cell where Arm D never beats Arm A at any budget. These are
 the least reliable numbers in the study and are to be labelled as such wherever quoted.
+
+## Correction Notice: The Correlation Comparison For Arm B Cannot Measure What It Was Read As Measuring, Recorded 3 November 2026
+
+Two observations prompted the floor baselines registered below. One holds and one does
+not, and the one that does not should be withdrawn before it is built on.
+
+**Withdrawn.** It was read from the record that Arm B leaves the prediction-truth
+correlation essentially unchanged, 0.617 against Arm A's 0.626, and that this is not what
+a genuine accuracy improvement looks like. The premise is right and the inference is not
+available. Pearson's r is invariant under a strictly increasing affine map of either
+variable, and Arm B's prediction is exactly such a map of Arm A's: all 360 fitted scales
+in the record are positive, the smallest being 0.018, so no row flips sign. Arm B
+therefore **cannot** change the correlation, whatever it does to the error. Checked
+rather than argued: paired by subject and cell across all 1,080 rows of Arms B, B-offset
+and B-ridge, the largest difference from Arm A's correlation is 0.000000.
+
+The quoted gap of 0.617 against 0.626 is an artefact of averaging unpaired row sets. Arm
+A has 120 rows, one per subject per cell, because it has no budget dimension; Arm B has
+360, six budgets per cell. The Arm B mean therefore includes the small-budget cells where
+the fitted scale falls to 0.018, and the Arm A mean does not. Comparing a 360-row mean to
+a 120-row mean violates the study's own paired-comparison convention.
+
+**This strengthens the case for a floor baseline rather than weakening it.** Correlation
+is structurally blind to the entire class of corrections Arms B, B-offset and B-ridge
+belong to, so it cannot be used to ask whether those arms are improving the estimate or
+substituting a constant. The only instrument that can answer that question is a baseline
+that substitutes a constant on purpose, which is what Arm Z1 is.
+
+**Upheld.** The fitted scale averages 0.777 across the four cells at all available data
+and runs as low as 0.207, on S5, where the offset reaches +104.23 BPM. At that scale the
+correction retains about a fifth of the model's variation and supplies the rest as a
+constant. That is a real observation about the mechanism and it is what Arm Z1 is
+registered to measure. The earlier figure of 0.78 for the mean scale is confirmed at all
+available data; over all budgets and cells the mean is 0.692 and the minimum 0.018.
+
+## Two Floor Baselines, Registered 3 November 2026
+
+Registered and committed before either arm is fitted. Both are closed form and consult
+no embedding and no model output whatsoever.
+
+The study has measured six adaptation methods against the frozen population model and
+against each other. It has never measured any of them against not having a model. Without
+that floor, the quantity every arm's improvement is expressed in is unanchored: a
+reviewer can ask what the foundation model contributes over knowing a person's own
+average heart rate, and nothing in the record answers it.
+
+### Arm Z0, global constant
+
+Predict the mean heart rate of the population set, the fourteen subjects other than the
+target, for every test window. Zero parameters per person, zero bytes, no labels from the
+target. The floor for knowing nothing at all.
+
+Z0 does not depend on the target's budget, so it is recorded **once per cell** with the
+budget field blank, exactly as Arm A is, rather than as six identical rows. This is a
+stated deviation from running it across all six budgets; it writes the same information
+without putting duplicate rows in the record, and the budget figures broadcast from the
+single row in analysis.
+
+### Arm Z1, per-person constant
+
+Predict the mean heart rate of the target's own adaptation budget for every test window.
+One parameter per person, four bytes, labels required. Recorded across all six budgets,
+so Z1 at two minutes sees exactly the two minutes Arm B-offset sees. The model is never
+consulted.
+
+**This is the load-bearing arm.** It costs exactly what Arm B-offset costs, one parameter
+and four bytes, and it uses no model output at all. The difference between Arm Z1 and the
+model-based arms is therefore the honest measure of what the foundation model contributes
+on this task, with the per-person mean held constant between them.
+
+### Correctness assertions
+
+Neither arm reduces to Arm A, so the degenerate check that every other arm carries does
+not apply. Two different assertions replace it, checked in code rather than assumed:
+
+- Z0's and Z1's predictions are constant across the test block, to floating point.
+- Z1's constant equals the mean label over the budget rows, and Z0's equals the mean
+  label over the population rows.
+
+### Scale and offset promoted to columns
+
+The fitted scale and offset of Arms B and B-ridge move from the hyperparameters JSON
+string to real columns, `fitted_scale` and `fitted_offset`, and the existing rows are
+backfilled from their own hyperparameters strings rather than refitted. This is a
+change of storage only: no number changes, and the backfill is asserted to agree with
+the string it was read from.
+
+### Predictions, registered before either arm runs
+
+1. **Arm Z1 lands between Arm A and Arm B, closer to Arm A.** On PaPaGei-P,
+   activity-stratified, at all available data, Arm A is 11.72 and Arm B is 9.65, so this
+   predicts Z1 in roughly 10.5 to 11.7 with the upper half of that range more likely.
+2. **If Arm Z1 beats Arm A, the frozen probe contributes nothing on this task**, and that
+   is the most important sentence in the paper. Registered as the outcome that would
+   force the headline to move, before it is known whether it happens.
+3. **Arm B still beats Arm Z1**, because the model contributes something beyond the
+   person's own mean. If this fails, every arm in the study is a reparameterisation of
+   the per-person mean and the frontier is measuring the wrong thing.
+4. **Arm Z0 is worse than Arm A** in all four cells. A population-mean constant should
+   lose to a population model; if it does not, the probe is not using the embedding.
+5. **Arm Z1 beats Arm Z0** at all available data in all four cells, since the per-person
+   mean is the single largest component of per-subject error, which the bias
+   decomposition of 29 September already established.
+6. **Arm Z1 is worse than Arm A at the two smallest budgets** in most cells, for the same
+   compositional reason every adaptive arm is: the first minutes of a recording are
+   sitting still, so the per-person mean estimated there is not the test block's mean.
+
+Prediction 3 is the one whose failure would be most expensive, and prediction 2 is the one
+whose success would most change the paper. Both are recorded here with the arms unfitted.
