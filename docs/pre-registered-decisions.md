@@ -1272,3 +1272,99 @@ paper should say so.
 
 Prediction 4 is the one that would most change the paper, since a frontier whose knee
 moves with the task is a different and more interesting claim than one that does not.
+
+## Outcome Of The Prediction Task, Recorded 3 November 2026
+
+1,380 rows, `python -m src.predict 60,120 temporal,activity`, 401 seconds, PaPaGei-P. The
+leakage assertion passes for every adaptation window of every subject in every cell: no
+window's target is a test window. 64,247 of 64,697 rows have a target at H=60 and 63,797
+at H=120, before the block restriction.
+
+**The quantity being predicted.** Mean absolute change in heart rate is **7.66 BPM over
+60 seconds** and **9.66 BPM over 120 seconds**. Those are the numbers every figure below
+should be read against.
+
+### The headline: nothing beats persistence by a usable margin
+
+Mean per-subject MAE on the change, all available personal data:
+
+| Arm | temporal H=60 | temporal H=120 | activity H=60 | activity H=120 |
+| --- | --- | --- | --- | --- |
+| persistence | 6.30 | 7.23 | 6.32 | 5.94 |
+| A | 6.26 | 7.20 | 6.27 | 5.88 |
+| Z1 | 6.32 | 7.33 | 6.32 | 6.05 |
+| B-offset | 6.28 | 7.30 | 6.27 | 5.98 |
+| B | 6.34 | 7.56 | 6.28 | 6.04 |
+| C1 | 6.27 | 7.23 | 6.27 | 5.95 |
+
+The best any arm manages against predicting no change is **+0.05 BPM**, which is **0.5 to
+0.7 per cent of the quantity being predicted**. Arm A's advantage is detectable at H=60 in
+both protocols, +0.039 [+0.015, +0.061] and +0.045 [+0.023, +0.065], and ceases to be
+detectable at H=120. **Statistically detectable and practically nil** is the honest
+description, and the paper should give both halves.
+
+This is a clean negative result rather than a failed experiment. A frozen PPG foundation
+model reading a single 8-second window carries essentially no information about where
+heart rate goes over the next one to two minutes, beyond that it will be near where it is
+now. It is pre-registered, it has the baseline that makes it interpretable, and it was
+only askable because persistence was registered as its own arm.
+
+### Predictions, scored
+
+1. **Persistence beats Arm A at H=60: failed.** Arm A beats persistence, detectably, in
+   both protocols. The margin is 0.04 BPM, so the prediction was wrong about the sign and
+   right about the magnitude being negligible.
+2. **Every arm beats persistence by less at H=60 than at H=120: failed.** Arm A's
+   advantage is flat across horizons, +0.039 and +0.045 at H=60 against +0.038 and +0.052
+   at H=120, and it loses detectability at the longer horizon rather than gaining it. The
+   longer horizon does not give the model more to contribute; it gives persistence more to
+   lose while the model gains nothing.
+3. **Arm B's advantage over Arm A is smaller on prediction than on estimation: held, and
+   emphatically.** On estimation Arm B beats Arm A by +2.08. On prediction Arm B is
+   **worse** than Arm A in all four cells, and at temporal H=120 it is detectably worse
+   than doing nothing at all, -0.325 [-0.483, -0.174], better on 2 of 15 subjects. A
+   calibration constant is not merely the wrong shape for a dynamics problem, it is
+   actively harmful: the per-person affine map is fitted on a window whose mean change is
+   not the test block's mean change, and unlike a level there is no persistent per-person
+   bias in a change for it to recover.
+4. **Arm C1's advantage over Arm B is larger on prediction than on estimation: held.**
+   This was registered as the prediction that would most change the paper. On estimation
+   C1 minus B is -0.44 on p/activity, Arm B better. On prediction **C1 beats B in all four
+   cells**: +0.075 [+0.021, +0.147], +0.331 [+0.202, +0.465], +0.011 and +0.092, detectable
+   in both temporal cells.
+5. **Arm Z1 is close to persistence: held.** Within 0.12 BPM in every cell, and detectably
+   slightly worse in three of four. The per-person mean change is near zero for almost
+   everyone, so the arm is persistence with an estimation error added.
+
+### The finding that matters beyond this task
+
+**The frontier's knee is task-dependent, and that is now measured rather than assumed.**
+On estimation, two stored values beat 513. On prediction, 513 beat two, in all four cells.
+Set beside the MOMENT result, where 513 drew level with two on a better representation,
+the study now has three conditions on its central claim rather than a bare assertion of
+it:
+
+| Condition | Arm B vs Arm C1 |
+| --- | --- |
+| estimation, PaPaGei-S | B better by 1.95, detectable |
+| estimation, PaPaGei-P | B better by 0.44 |
+| estimation, MOMENT | C1 better by 0.25, not detectable |
+| prediction, PaPaGei-P, temporal H=120 | **C1 better by 0.331, detectable** |
+
+**Two stored values win on an easy task with a weak representation and lose on a hard task
+or a strong one.** That is a far more useful claim than "two parameters are enough", it is
+supported in both directions, and none of it was visible before the floor baselines forced
+the question of what the arms were being measured against.
+
+### Caveats that travel with these numbers
+
+The arms see only the embedding of the current window. A forecaster given the recent heart
+rate trajectory, or accelerometer data, would be a different and much stronger baseline,
+and nothing here speaks to it. What is tested is whether a **frozen PPG representation
+plus per-person adaptation** predicts change, and it does not.
+
+The activity H=120 cell carries the composition defect registered before the run: cycling
+is 0.1 per cent of its adaptation windows against 5.3 per cent at H=0. Its persistence
+figure of 5.94 is lower than every other cell's precisely because the surviving population
+is sedentary. It is reported, it is not primary, and no cross-cell comparison should be
+drawn from it.
