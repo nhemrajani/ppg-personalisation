@@ -25,7 +25,10 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 RECORD = ROOT / "results" / "experiments.csv"
 RESAMPLES = 5000
-CELLS = (("p", "activity"), ("p", "temporal"), ("s", "activity"), ("s", "temporal"))
+# Backbones in the order they entered the study; a cell appears when its rows
+# do, so MOMENT joined these tables without this file changing.
+BACKBONE_ORDER = ("p", "s", "moment")
+CELLS = tuple((b, p) for b in BACKBONE_ORDER for p in ("activity", "temporal"))
 BUDGETS = ("2", "5", "10", "20", "40", "")
 BUDGET_LABEL = {"": "all", "2": "2", "5": "5", "10": "10", "20": "20", "40": "40"}
 # Arms with no budget dimension, broadcast across the sweep for comparison.

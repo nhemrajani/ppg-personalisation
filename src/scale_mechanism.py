@@ -35,7 +35,8 @@ from src.stage4 import embeddings
 
 ROOT = Path(__file__).resolve().parent.parent
 BUDGETS = (2, 5, 10, 20, 40, None)
-CELLS = (("p", "activity"), ("p", "temporal"), ("s", "activity"), ("s", "temporal"))
+CELLS = (("s", "activity"), ("s", "temporal"), ("p", "activity"),
+         ("p", "temporal"), ("moment", "activity"), ("moment", "temporal"))
 TOLERANCE = 1e-10
 
 
@@ -48,11 +49,11 @@ def main() -> None:
     print("Arm B's fitted scale, decomposed as r * sd(truth) / sd(prediction).")
     print("The identity is exact, so the question is only which factor moves.\n")
     print(f"{'cell':14s}{'budget':>8s}{'scale':>8s}{'=':>3s}{'r':>8s}"
-          f"{'x':>3s}{'sd ratio':>10s}{'worst error':>14s}")
-    print("-" * 68)
+          f"{'x':>3s}{'sd ratio':>10s}{'|(r,sd)-1|':>10s}{'worst err':>12s}")
+    print("-" * 76)
 
     for backbone, protocol in CELLS:
-        x = np.asarray(embeddings(backbone, "asis"), dtype=np.float64)
+        x = np.asarray(embeddings(backbone), dtype=np.float64)
         bases = {}
         for budget in BUDGETS:
             scales, correlations, ratios, errors = [], [], [], []
@@ -73,12 +74,18 @@ def main() -> None:
                              "subject": int(target),
                              "fitted_scale": round(scale, 6),
                              "adaptation_r": round(r, 6),
-                             "spread_ratio": round(ratio, 6)})
+                             "spread_ratio": round(ratio, 6),
+                             "gap_from_ideal": round(float(np.hypot(r - 1, ratio - 1)), 6)})
             worst = max(errors)
             assert worst < TOLERANCE, f"the OLS identity fails by {worst:.2e}"
+            # Distance of the pair from its ideal. The scale alone is a product
+            # of two factors and can move the wrong way when they move in
+            # opposite directions, which is what MOMENT does on the temporal
+            # protocol. The pair is the diagnostic; the scale is its product.
+            gap = float(np.hypot(np.mean(correlations) - 1, np.mean(ratios) - 1))
             print(f"{backbone}/{protocol:11s}{'all' if budget is None else budget:>8}"
                   f"{np.mean(scales):>8.3f}{'=':>3s}{np.mean(correlations):>8.3f}"
-                  f"{'x':>3s}{np.mean(ratios):>10.3f}{worst:>14.1e}")
+                  f"{'x':>3s}{np.mean(ratios):>10.3f}{gap:>10.3f}{worst:>12.1e}")
         print()
 
     out = ROOT / "results" / "scale_mechanism.csv"

@@ -519,6 +519,105 @@ quoted gap came from averaging Arm B's 360 rows against Arm A's 120. Correlation
 structurally blind to this whole class of corrections, which is why the floor baseline was
 needed to answer the question instead.
 
+### Gate 7b — MOMENT, and the knee moves
+**Status: passed 3 November 2026.** `venv/bin/python -m src.embed_moment prepare`, then
+`venv-moment/bin/python -m src.embed_moment embed` (25.4 min on MPS, 64,697 x 1,024), then
+`python -m src.stage11 reproduce` and `python -m src.stage11 arms` (1,140 rows, 835 s).
+
+**Why MOMENT was run.** The floor baselines create an objection: the estimator is weak, so
+of course cheap corrections beat capacity. MOMENT is the strongest frozen probe in the
+reference table and every closed-form arm reads a cached table without knowing which
+encoder wrote it, so the comparison transfers unchanged. Arms C2 and D are
+architecture-specific and are not run on it.
+
+**Two facts established before any code, both load-bearing.** MOMENT-1-large reports
+`seq_len = 512` but its embedding path takes the patch count from the tensor, so PaPaGei's
+1,250-sample windows run clean and **it reads the whole window rather than truncating**:
+two inputs sharing their first 512 samples give embeddings differing by 0.036, and a spike
+at sample 1,250 moves the embedding by 0.09. Had it truncated, PaPaGei's own MOMENT
+baseline would have been computed on 4.1 of every 8 seconds. And **8.82 is PaPaGei's own
+number**, from their `linearprobing/feature_extraction_moment.py` into their own
+`regression.py`, so the probe protocol is the one `src/stage4.py` already implements and
+nothing downstream needed inventing. Verified against their Table 3 directly: MOMENT
+**8.82 [8.68-8.96]**, the same row as PaPaGei-P 10.92 and PaPaGei-S 11.53.
+
+MOMENT is **385M parameters against PaPaGei's 5M**, so this is a 77-fold encoder-size
+comparison as well as a per-person one. It is run at 2.4 times its pre-training context
+and with PaPaGei's 125 leading and trailing zeros treated as real data; both are PaPaGei's
+choices and both are what produced 8.82, so the standing rule applies and they are
+reported rather than fixed.
+
+**It reproduces, and the shape corroborates an earlier reading.** 8.82 sits at the 37.6th
+percentile of our 455-triple distribution, median 9.35. All three backbones reproduce with
+one signature, our median above theirs and their figure in the lower third: MOMENT 0.53
+above at the 37.6th percentile, P 0.86 at the 32nd, S 1.24 at the 28th. **MOMENT's gap is
+the smallest**, which is what the registered reading of PaPaGei's gap predicts: their
+figures are the best of five pre-training runs selected per task, MOMENT is one released
+checkpoint with no such selection. Corroboration, not a test, since it was not registered.
+
+Mean per-subject MAE at all available data, activity-stratified:
+
+| Arm | Cost | MOMENT | PaPaGei-P | PaPaGei-S |
+| --- | --- | --- | --- | --- |
+| Z1, per-person constant | 1 | 14.24 | 14.24 | 14.24 |
+| A, population model | 0 | 9.39 | 11.72 | 13.14 |
+| B-offset | 1 | 8.76 | 10.22 | 10.81 |
+| B, affine | 2 | 8.17 | 9.65 | 10.16 |
+| B-ridge | 2 | 8.08 | 9.70 | 10.21 |
+| B2, unlabelled | 0 | 10.20 | 11.57 | 12.79 |
+| C1, output layer | 513 / 1,025 | **7.92** | 10.09 | 12.11 |
+
+**The headline claim is conditional on the representation, and now measured as such.**
+Arm B minus Arm C1, paired per subject:
+
+| Protocol | PaPaGei-S | PaPaGei-P | MOMENT |
+| --- | --- | --- | --- |
+| activity | **+1.95** | +0.44 | **-0.25** |
+| temporal | **+1.45** | +0.69 | **-0.12** |
+
+Positive means Arm B is better; bold is detectable. **The advantage of two stored values
+over 513 decays monotonically with backbone quality and crosses zero at the best backbone
+tested.** Neither MOMENT cell is detectable, [-1.26, +0.41] and [-1.38, +0.95], and Arm B
+is better on 9 and 10 of fifteen subjects, so **the knee has not provably moved and the
+study must not claim it has.** What it can claim is that two parameters beating 513 was
+partly a property of a weak estimator, demonstrated across a 3.75 BPM range of baseline
+quality. That is defensible where "two parameters win" was not.
+
+**The floor objection weakens on a good backbone, which is the right way round.** Arm A
+over Arm Z1 is +4.85 and +3.62 on MOMENT, **detectable in both cells**, against +2.52 and
++1.48 on PaPaGei-P where only one of four cells was detectable. A better representation
+beats the person's own average by more, exactly as registered.
+
+**Arm B's gain over Arm A shrinks monotonically as the backbone improves**, which was
+registered: activity S +2.97, P +2.08, MOMENT +1.22; temporal S +2.19, P +1.50, MOMENT
++0.80. On moment/temporal it stops being detectable, [-0.14, +1.87]. What Arm B corrects
+is a per-person bias and a better representation leaves less of it.
+
+**Arm B2 is detectably worse than doing nothing on MOMENT**, -0.81 [-1.34, -0.37], better
+on 4 of 15. Its gain runs S +0.34, P +0.16, MOMENT -0.81, so the pattern already recorded
+for Sub Question 3, that reweighting helps only when the representation does not already
+encode subject identity, extends monotonically and past zero. The unlabelled arm does not
+merely stop helping on a better representation, it starts hurting. Not registered, so
+report it as an observation.
+
+**The scale diagnostic needs restating as a pair.** The registered prediction was that
+Arm B's fitted scale moves toward 1 on MOMENT. The mechanism's own half holds cleanly: the
+adaptation-block correlation rises monotonically across all three backbones in both
+protocols, 0.621, 0.650, 0.727 on activity and 0.667, 0.699, 0.763 on temporal. The scale
+moves toward 1 on activity, 0.689 to 0.736, and **away from it on temporal**, 0.863 to
+0.853. The decomposition explains it: **both factors improved**, the spread ratio falling
+from 1.264 to 1.137, and since that ratio sits above 1 its improvement pulls the scale
+down while the correlation's pushes it up. The diagnostic is the pair, not its product.
+Measured as the distance of `(r, spread ratio)` from `(1, 1)` it is monotone in backbone
+quality in both protocols: 0.400, 0.364, 0.277 and 0.454, 0.400, 0.274.
+
+**Environment note.** `momentfm` pins numpy 1.25.2, huggingface-hub 0.24.0 and transformers
+4.33.3, none installable beside the pinned pyPPG and biobss, so MOMENT lives in
+`venv-moment/` and the preprocessing stays in `venv/`. The handoff is a window cache whose
+re-derived index is asserted equal to Gate 3's on all four keys. Arm C1's per-person cost
+was hardcoded at 513 and now derives from the embedding width, so MOMENT prices at 1,025;
+asserted to still return exactly 513 on 512 dimensions, so no earlier row changes.
+
 **The answer to the main research question survives, and in a better form.** It is no
 longer that costlier adaptation fails. It is that costlier adaptation **works and still
 does not beat two parameters**. Paired per-subject, at all available data:

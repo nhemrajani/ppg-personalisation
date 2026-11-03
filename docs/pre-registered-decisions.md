@@ -1056,3 +1056,112 @@ about residual bias and the second about representation quality.
 
 **Prediction 5 is the one whose failure would be most expensive**, and prediction 4 the
 one whose success would most strengthen the paper.
+
+## Outcome Of The MOMENT Backbone, Recorded 3 November 2026
+
+The table is 64,697 by 1,024, embedded in 25.4 minutes on MPS from windows whose row order
+was asserted equal to Gate 3's index on all four keys. 455 reproduction triples, then
+1,140 arm rows in 835 seconds. Every degenerate and floor assertion passes on the new
+table, and the floor rows match Stage 10's PaPaGei rows in all 210 shared cells, which
+confirms the splits did not move between backbones.
+
+### The reproduction gate passes, and its shape corroborates an earlier reading
+
+MOMENT's published 8.82 sits at the **37.6th percentile** of our 455-triple distribution,
+median 9.35, range 5.98 to 16.87. All three backbones now reproduce with one signature:
+our median above theirs, their figure in the lower third.
+
+| Backbone | Published | Our median | Gap | Percentile |
+| --- | --- | --- | --- | --- |
+| MOMENT-1-large | 8.82 | 9.35 | 0.53 | 37.6 |
+| PaPaGei-P | 10.92 | 11.78 | 0.86 | 32 |
+| PaPaGei-S | 11.53 | 12.77 | 1.24 | 28 |
+
+**MOMENT's gap is the smallest, which is what the registered reading of the PaPaGei gap
+predicts.** PaPaGei's published figures are the best of five pre-training runs selected
+per downstream task; MOMENT is one released checkpoint with no such selection, so it
+should show less of a gap than either PaPaGei row, and it does. This was not registered in
+advance, so it is corroboration and not a test, and it should be reported as such.
+
+### The predictions, scored
+
+Mean per-subject MAE at all available personal data, activity-stratified:
+
+| Arm | Cost | MOMENT | PaPaGei-P | PaPaGei-S |
+| --- | --- | --- | --- | --- |
+| Z1, per-person constant | 1 | 14.24 | 14.24 | 14.24 |
+| A, population model | 0 | 9.39 | 11.72 | 13.14 |
+| B-offset | 1 | 8.76 | 10.22 | 10.81 |
+| B, affine | 2 | 8.17 | 9.65 | 10.16 |
+| B-ridge | 2 | 8.08 | 9.70 | 10.21 |
+| B2, unlabelled | 0 | 10.20 | 11.57 | 12.79 |
+| C1, output layer | 513 / 1,025 | **7.92** | 10.09 | 12.11 |
+
+1. **MOMENT's Arm A beats PaPaGei-P's: held.** 9.39 against 11.72 on activity, 8.22
+   against 10.36 on temporal.
+2. **Arm B's gain over Arm A shrinks as the backbone improves: held, monotonically in
+   both protocols.** Activity: S +2.97, P +2.08, MOMENT +1.22. Temporal: S +2.19, P +1.50,
+   MOMENT +0.80. The registered bound was below +2.08 and the result is +1.22. On
+   moment/temporal the gain stops being detectable at all, [-0.14, +1.87].
+3. **The gap between Arm Z1 and Arm A widens on MOMENT: held.** The registered bound was
+   above +2.52 and the result is +4.85 on activity and +3.62 on temporal, **both
+   detectable**, where on PaPaGei-P only one cell of four was. The floor objection is much
+   less sharp on a good backbone, which is the right way round.
+4. **Arm B's fitted scale moves closer to 1 on MOMENT: split, and the decomposition says
+   why.** The mechanism's own half holds cleanly: the mean adaptation-block correlation
+   rises monotonically across all three backbones in both protocols, 0.621, 0.650, 0.727
+   on activity and 0.667, 0.699, 0.763 on temporal, and both MOMENT values clear the
+   registered 0.650. The scale itself moves toward 1 on activity, 0.689 to 0.736, and
+   **away from it on temporal**, 0.863 to 0.853.
+
+   This is a failure of the prediction as written and not of the mechanism. The scale is a
+   product of two factors and **both improved**: the spread ratio also moved toward 1,
+   from 1.264 to 1.137 on temporal. Because that ratio sits above 1, its improvement pulls
+   the scale down while the correlation's pushes it up, and on temporal the first is
+   larger. **The diagnostic is the pair, not its product.** Measured as the distance of
+   `(r, spread ratio)` from `(1, 1)`, the ordering is monotone in backbone quality in both
+   protocols: 0.400, 0.364, 0.277 on activity and 0.454, 0.400, 0.274 on temporal. The
+   prediction should have been registered on the pair, and is restated that way for any
+   future backbone.
+5. **Arm B still beats Arm C1: failed on the point estimate, not detectably.** This was
+   registered as the prediction whose failure would be most expensive, and it is the one
+   that failed.
+
+### Arm B minus Arm C1, which is the finding
+
+| Protocol | PaPaGei-S | PaPaGei-P | MOMENT |
+| --- | --- | --- | --- |
+| activity | **+1.95** | +0.44 | **-0.25** |
+| temporal | **+1.45** | +0.69 | **-0.12** |
+
+Positive means Arm B is better; bold is detectable. **The advantage of two stored values
+over 513 decays monotonically with backbone quality and crosses zero at the best backbone
+tested.** Neither MOMENT cell is detectable, [-1.26, +0.41] and [-1.38, +0.95], and Arm B
+is still better on 9 and 10 of fifteen subjects, so the knee has not provably moved and
+the study must not claim it has.
+
+**What it does say is better than what the prediction assumed.** Two parameters beating
+513 was partly a property of a weak estimator. On a 385M-parameter encoder that reaches
+9.39 BPM unadapted, the two methods are indistinguishable, and the trend across three
+backbones says which way the next one would go. The honest sentence for the paper is that
+the cheap correction's dominance is **conditional on the representation**, demonstrated
+over a 3.75 BPM range of baseline quality, rather than a general law. That is a claim the
+study can defend and the earlier one was not.
+
+### One result that was not registered
+
+**Arm B2 is detectably worse than doing nothing on MOMENT**, -0.81 [-1.34, -0.37], better
+on 4 of 15 subjects. Across backbones its gain runs S +0.34, P +0.16 and MOMENT -0.81, so
+the pattern CLAUDE.md already records, that reweighting helps only when the representation
+does not already encode subject identity, extends monotonically and past zero. The
+unlabelled arm does not merely stop helping on a better representation; it starts hurting.
+Reported as an observation rather than a test, since no prediction was registered for it.
+
+### Record integrity note
+
+`src/stage4.py` was edited during the reproduction run, to record MOMENT's published
+interval read from the paper's Table 3. The repository's own rule is not to touch the tree
+while a job runs and it was broken here. The edit changed `PUBLISHED_INTERVAL`, a reporting
+constant that `reproduction()` never reads, and the running process had already imported
+the module, so no recorded number is affected. Noted rather than passed over, because the
+value of the rule is that breaches are reported even when they turn out to be harmless.
