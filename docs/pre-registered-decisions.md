@@ -1165,3 +1165,110 @@ while a job runs and it was broken here. The edit changed `PUBLISHED_INTERVAL`, 
 constant that `reproduction()` never reads, and the running process had already imported
 the module, so no recorded number is affected. Noted rather than passed over, because the
 value of the rule is that breaches are reported even when they turn out to be harmless.
+
+## The Prediction Task: Design And Measured Data Cost, Registered 3 November 2026
+
+Registered before any prediction arm is fitted. The target becomes the change in heart
+rate over the next H seconds, `hr[t+H] - hr[t]`, for H in {60, 120}. Arms: persistence,
+Z1, A, B, B-offset, C1, all closed form. Arms B2, B-ridge, C2 and D are not run.
+
+**Persistence, predicting zero change, is registered as its own arm and is the baseline
+that matters.** Heart rate is strongly autocorrelated at these horizons, so without it
+every arm would look excellent for no reason. It costs nothing and uses nothing.
+
+### The leakage trap, and the rule that closes it
+
+A window near the end of the adaptation block draws its target from H seconds later, which
+without a change would fall inside the test block. Two rules close it, both asserted in
+code rather than assumed.
+
+1. **Every buffer widens by the full horizon**, to `BUFFER_SECONDS + H`, at every boundary
+   between differently labelled regions. `make_split` already takes `buffer_seconds`, so
+   this is a parameter and not a new code path. With a window of 8 s, the worst case is a
+   window ending exactly at the cut, whose target ends at `cut + H`; the test block starts
+   at `cut + 8 + H`, so the margin is one full window.
+2. **A window is usable only if its target lies in the same contiguous region**, not merely
+   the same block. The looser same-block rule would let a window at the end of the cycling
+   region take its target from the walking region, jumping over an intervening test block.
+   Measured, the two rules differ by under 2 per cent of windows and not at all in the
+   conclusion below, but the stricter one is the defensible one and is what is registered.
+
+### The measured data cost, which is the reason this entry is long
+
+| Protocol | H | Buffer | Adaptation kept | Test kept | Windows lost |
+| --- | --- | --- | --- | --- | --- |
+| activity | 0 | 8 s | 30,403 | 31,000 | 0.0% |
+| activity | 60 | 68 s | 20,316 | 19,159 | **21.3%** |
+| activity | 120 | 128 s | 13,660 | 10,933 | **41.4%** |
+| temporal | 0 | 8 s | 32,323 | 32,263 | 0.0% |
+| temporal | 60 | 68 s | 31,873 | 31,363 | 1.4% |
+| temporal | 120 | 128 s | 31,423 | 30,463 | 2.8% |
+
+**The two protocols are not comparably affected, and the asymmetry is a finding.** The
+activity-stratified protocol has sixteen runs per subject and each pays the horizon twice,
+once in its own widened buffer and once at its trailing edge, so it loses 41.4 per cent of
+windows at H=120 against the temporal protocol's 2.8 per cent. **Activity stratification,
+which the estimation task adopts precisely because it removes the activity confound,
+becomes fifteen times more expensive on a prediction task.** That belongs in the paper's
+methods, because any study doing per-person prediction on an activity-protocol dataset
+faces it.
+
+### Two consequences that change the registered design
+
+**The budget sweep must be truncated on the activity protocol.** S6 is the binding subject
+as it is everywhere in this study, with 40.8 usable adaptation minutes at H=0, 27.0 at
+H=60 and 17.5 at H=120. So the registered sweeps are:
+
+| Protocol | H | Budgets |
+| --- | --- | --- |
+| activity | 60 | 2, 5, 10, 20, all |
+| activity | 120 | 2, 5, 10, all |
+| temporal | 60, 120 | 2, 5, 10, 20, 40, all |
+
+Registered now rather than discovered mid-run. A budget no subject can reach is not a
+budget, and quietly dropping subjects from the larger cells would break the paired
+comparison every claim in this study rests on.
+
+**The activity protocol's window population stops being representative at H=120.** Share
+of adaptation windows by activity, same-run rule:
+
+| Activity | H=0 | H=60 | H=120 |
+| --- | --- | --- | --- |
+| transient | 25.8% | 15.7% | 6.6% |
+| **cycling** | **5.3%** | **3.5%** | **0.1%** |
+| lunch | 21.9% | 28.6% | 36.4% |
+| working | 13.6% | 17.8% | 24.3% |
+
+Long sedentary runs survive the horizon and short active ones do not. **Cycling is
+effectively gone at H=120, at 0.1 per cent.** The surviving population is more sedentary
+than the dataset, which is the population on which persistence is easiest to beat nothing
+with, so the H=120 activity cell is biased toward making every arm look good and
+persistence look strong. It is registered as **reportable but not primary**, with the
+composition table printed beside every number taken from it.
+
+**For the prediction task only, the temporal protocol is primary.** This inverts the
+estimation task's priority and must be stated loudly wherever the two are compared. The
+reason is that the activity protocol's defect at a horizon is a change in which windows
+exist, which no analysis can correct, while the temporal protocol's defect is the activity
+confound, which is the same confound it already has in the estimation task and which the
+activity cell is reported alongside to expose. Neither protocol is clean here and the
+paper should say so.
+
+### Predictions, registered before any prediction arm runs
+
+1. **Persistence beats Arm A at H=60** in both protocols. Heart rate is strongly
+   autocorrelated at one minute and a frozen probe predicting a change from a single 8 s
+   window has little to work with.
+2. **Every arm beats persistence by less at H=60 than at H=120**, because the longer
+   horizon is where persistence degrades and a model can contribute.
+3. **Arm B's advantage over Arm A is smaller on prediction than on estimation**, because a
+   calibration constant is the wrong shape for a dynamics problem. The estimation figure
+   to beat is +2.08 on p/activity.
+4. **Arm C1's advantage over Arm B is larger on prediction than on estimation.** If
+   capacity ever pays in this study it pays here. On estimation C1 minus B is +0.44 on
+   p/activity and negative only on MOMENT.
+5. **Arm Z1 is close to persistence**, because the per-person mean *change* over a window
+   is near zero for any person whose heart rate is not trending, and that is most of them.
+
+Prediction 4 is the one that would most change the paper, since a frontier whose knee
+moves with the task is a different and more interesting claim than one that does not.
