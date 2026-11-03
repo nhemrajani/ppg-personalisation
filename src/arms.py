@@ -266,6 +266,64 @@ def arm_b_ridge(x, y, split, subject, budget: np.ndarray, base: Fitted) -> Fitte
                    "n_fit": int(len(fit_p)), "n_validation": int(len(val_p))})
 
 
+def arm_z0(x, y, split, subject, budget=None, base: Fitted | None = None) -> Fitted:
+    """The population's mean heart rate, for every test window. The floor.
+
+    Registered 3 November 2026. Zero parameters, zero bytes, no labels from the
+    target, and no embedding: `x` is accepted only so that every arm shares one
+    signature. This is what "knowing nothing at all" scores, and it is the
+    number every other arm's improvement should be read against.
+    """
+    constant = float(np.mean(y[split.population]))
+    return Fitted(np.full(len(split.test), constant), 0, 0, None,
+                  {"constant": round(constant, 4), "source": "population mean"})
+
+
+def arm_z1(x, y, split, subject, budget: np.ndarray, base: Fitted | None = None) -> Fitted:
+    """The target's own mean heart rate over its budget, for every test window.
+
+    Registered 3 November 2026, and the load-bearing baseline. One parameter and
+    four bytes, which is exactly Arm B-offset's cost, with the model never
+    consulted. The gap between this and the model-based arms is what the
+    foundation model contributes once each person's own average is already known.
+
+    With no budget there is nothing to estimate the constant from, so it falls
+    back to the population mean, which is Arm Z0.
+    """
+    if len(budget) < 1:
+        return arm_z0(x, y, split, subject)
+    constant = float(np.mean(y[budget]))
+    return Fitted(np.full(len(split.test), constant), 1, 4, None,
+                  {"constant": round(constant, 4), "source": "budget mean",
+                   "n_budget": int(len(budget))})
+
+
+def check_floors(x, y, split, subject) -> None:
+    """The floor arms do not reduce to Arm A, so they carry their own assertions.
+
+    Registered alongside the arms: each must be constant across the test block,
+    and each must equal the mean of the rows it is entitled to see.
+    """
+    for name, fit, expected_rows, cost in (
+        ("Arm Z0", arm_z0(x, y, split, subject), split.population, 0),
+        ("Arm Z1", arm_z1(x, y, split, subject, split.adaptation), split.adaptation, 1),
+    ):
+        spread = float(np.ptp(fit.predictions))
+        assert spread < TOLERANCE, f"{name} is not constant across the test block: spread {spread:.2e}"
+        assert len(fit.predictions) == len(split.test), f"{name} has the wrong length"
+        want = float(np.mean(y[expected_rows]))
+        got = float(fit.predictions[0])
+        assert abs(got - want) < TOLERANCE, f"{name} is {got:.6f}, not the mean {want:.6f}"
+        assert fit.trainable_parameters == cost, f"{name} costs {fit.trainable_parameters}, not {cost}"
+
+    # Z1 with nothing to fit on must fall back to Z0 exactly.
+    empty = np.empty(0, dtype=int)
+    z1 = arm_z1(x, y, split, subject, empty)
+    z0 = arm_z0(x, y, split, subject)
+    assert np.abs(z1.predictions - z0.predictions).max() < TOLERANCE, \
+        "Arm Z1 with an empty budget does not reduce to Arm Z0"
+
+
 def check_degenerate(x, y, split, subject) -> None:
     """Every arm must reduce to Arm A when it is doing nothing."""
     base = arm_a(x, y, split, subject)

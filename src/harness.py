@@ -79,6 +79,13 @@ class Run:
     # How it was configured
     alpha: float | None = None
     rank: int | None = None
+
+    # The fitted per-person correction, for the arms that have one. Promoted out
+    # of the hyperparameters string on 3 November 2026: the scale is a result in
+    # its own right, not a setting, because how far below 1 it sits says how much
+    # of the model's prediction the correction is discarding.
+    fitted_scale: float | None = None
+    fitted_offset: float | None = None
     seed: int = 0
     hyperparameters: str = ""  # anything not worth its own column, as JSON
 

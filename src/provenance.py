@@ -57,6 +57,11 @@ JOBS = {
                         "BUFFER_WINDOWS"),
         **SHARED,
     },
+    "stage10": {
+        "src/arms.py": ("Fitted", "arm_z0", "arm_z1", "check_floors", "TOLERANCE"),
+        "src/stage10.py": ("BUDGETS", "PROTOCOLS", "BACKBONES", "main"),
+        **SHARED,
+    },
 }
 
 # Verified equivalences. The key is a digest, or a legacy commit token found on
