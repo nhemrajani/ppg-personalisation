@@ -22,3 +22,7 @@ log/*.md
 .env
 .DS_Store
 *.log
+
+# Exception: a 15 KB summary, not bulk data. Committing it means
+# figures/gate2_polarity.png regenerates without the 20 GB dataset.
+!results/beat_triggered_average.npz
